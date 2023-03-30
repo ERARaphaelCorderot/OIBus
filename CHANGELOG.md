@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.5.0-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.0-main.0...v2.5.0-main.1) (2023-03-30)
+
+
+### Features
+
+* **cache:** add a max size limit ([9622f75](https://github.com/OptimistikSAS/OIBus/commit/9622f75b4d9a07331888ef78567cf88b7ab7f2dc))
+
 ## [2.5.0-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.4.0...v2.5.0-main.0) (2023-01-19)
 
 
