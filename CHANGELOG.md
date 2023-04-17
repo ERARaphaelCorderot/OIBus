@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.4-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.3...v2.5.4-main.1) (2023-04-17)
+
+
+### Bug Fixes
+
+* **north:** add acceptUnauthorized field in OIAnalytics and OIConnect north connectors ([8ec6800](https://github.com/OptimistikSAS/OIBus/commit/8ec68008953927cd419ebb3455e12d82ceb1dd06))
+
 ### [2.5.4-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.3...v2.5.4-main.0) (2023-04-17)
 
 
