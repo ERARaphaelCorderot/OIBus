@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.4-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.1...v2.5.4-main.2) (2023-04-17)
+
+
+### Bug Fixes
+
+* **ci:** fix node version ([4de4103](https://github.com/OptimistikSAS/OIBus/commit/4de4103ef86b82431858a4a9e8b3cda1f40be99d))
+* **engine:** fix async startup for connectors ([6e3148c](https://github.com/OptimistikSAS/OIBus/commit/6e3148c1e7545e162f241c54e105e6e48ce5351c))
+* **mysql:** fix mysql package ([cf7391b](https://github.com/OptimistikSAS/OIBus/commit/cf7391bc224fe5bb967b28d4b35e4a231100fc68))
+
 ### [2.5.4-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.3...v2.5.4-main.1) (2023-04-17)
 
 
