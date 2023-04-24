@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.4-main.3](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.2...v2.5.4-main.3) (2023-04-24)
+
+
+### Bug Fixes
+
+* **endpoint:** Fix addValues endpoint when receiving from legacy OIbus ([45113fb](https://github.com/OptimistikSAS/OIBus/commit/45113fbecce340e322fabffc0a5658574c480f91))
+* **migration:** Fix proxies and OPCHDA migration ([ea1888f](https://github.com/OptimistikSAS/OIBus/commit/ea1888f9375cba4a81ee0ca586fe5c8929538368))
+
 ### [2.5.4-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.1...v2.5.4-main.2) (2023-04-17)
 
 
