@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.7-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.1...v2.5.7-main.2) (2023-05-16)
+
+
+### Bug Fixes
+
+* **history-query:** Fix History Query edition and run ([5f8f06a](https://github.com/OptimistikSAS/OIBus/commit/5f8f06a36156f11c80b18fdc62d351b63c517d77))
+
 ### [2.5.7-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.0...v2.5.7-main.1) (2023-05-16)
 
 
