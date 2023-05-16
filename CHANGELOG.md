@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.7-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.0...v2.5.7-main.1) (2023-05-16)
+
+
+### Bug Fixes
+
+* **sql-south:** improve logging and send raw values if formatted result is not an array ([96d38cf](https://github.com/OptimistikSAS/OIBus/commit/96d38cfb266ae29da0b75309c06eabb9cd5bb2d3))
+
 ### [2.5.7-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.6...v2.5.7-main.0) (2023-05-15)
 
 
