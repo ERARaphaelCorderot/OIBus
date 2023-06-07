@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.9-ip21.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.8...v2.5.9-ip21.0) (2023-06-07)
+
+
+### Bug Fixes
+
+* **history-query:** Fix file history query ([5b201c2](https://github.com/OptimistikSAS/OIBus/commit/5b201c29e8b8680e4e1c30bf30ebe0555025bab2))
+* **history:** Fix new history when no history capable south are set ([83af113](https://github.com/OptimistikSAS/OIBus/commit/83af1131485d05962f032cf204098ca7d4b88256))
+* **ip21:** Fix logger ([72207d6](https://github.com/OptimistikSAS/OIBus/commit/72207d6a7e25dc4811f3f99d8579988fe3b23125))
+* **odbc:** Add IP21 ODBC support in South SQL connector ([a3d1633](https://github.com/OptimistikSAS/OIBus/commit/a3d16335aa90e281e001f371693361d8f8a29d64))
+* **odbc:** Username not mandatory ([eed243d](https://github.com/OptimistikSAS/OIBus/commit/eed243d89bb66300299a88913a45c1224f7d7bb0))
+* **sql:** Improve log for IP21 odbc driver ([e14d329](https://github.com/OptimistikSAS/OIBus/commit/e14d3296b7edbd7cc080ad0e01b7c0666d71437d))
+
 ### [2.5.8](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7...v2.5.8) (2023-05-22)
 
 
