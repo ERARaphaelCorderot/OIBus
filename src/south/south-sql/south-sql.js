@@ -513,7 +513,7 @@ export default class SouthSQL extends SouthConnector {
       const endDateTime = DateTime.fromJSDate(endTime).toFormat('yyyy-MM-dd HH:mm:ss.SSS')
       const params = generateReplacementParameters(this.query, startDateTime, endDateTime)
       data = await connection.query(adaptedQuery, params)
-      this.logger.debug(`Found data in IP21: ${JSON.stringify(data)}`)
+      this.logger.debug(`Found ${data?.length} data IP21. First row is ${JSON.stringify(data?.length > 0 ? data[0] : null)}`)
     } catch (error) {
       if (error.odbcErrors?.length > 0) {
         error.odbcErrors.forEach((odbcError) => {
