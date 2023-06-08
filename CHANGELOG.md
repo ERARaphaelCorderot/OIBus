@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.9-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.8...v2.5.9-main.0) (2023-06-08)
+
+
+### Bug Fixes
+
+* **history-query:** Fix file history query ([5b201c2](https://github.com/OptimistikSAS/OIBus/commit/5b201c29e8b8680e4e1c30bf30ebe0555025bab2))
+* **history:** Fix new history when no history capable south are set ([83af113](https://github.com/OptimistikSAS/OIBus/commit/83af1131485d05962f032cf204098ca7d4b88256))
+* **ip21:** Fix StartTime/EndTime format ('dd-MMM-yy HH:mm:ss.SSS') for sqlite query ([9bc7527](https://github.com/OptimistikSAS/OIBus/commit/9bc7527eb80aca45fb9a75f820e24a006924ba69))
+* **odbc:** Add IP21 ODBC support in South SQL connector ([a3d1633](https://github.com/OptimistikSAS/OIBus/commit/a3d16335aa90e281e001f371693361d8f8a29d64))
+* **odbc:** Username not mandatory ([eed243d](https://github.com/OptimistikSAS/OIBus/commit/eed243d89bb66300299a88913a45c1224f7d7bb0))
+* **sql:** Improve log for IP21 odbc driver ([e14d329](https://github.com/OptimistikSAS/OIBus/commit/e14d3296b7edbd7cc080ad0e01b7c0666d71437d))
+
+### [2.5.7-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.1...v2.5.7-main.2) (2023-05-16)
+
+### [2.5.7-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.0...v2.5.7-main.1) (2023-05-16)
+
+### [2.5.7-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.6...v2.5.7-main.0) (2023-05-15)
+
+### [2.5.4-main.3](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.2...v2.5.4-main.3) (2023-04-24)
+
+### [2.5.4-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.1...v2.5.4-main.2) (2023-04-17)
+
+### [2.5.4-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.3...v2.5.4-main.1) (2023-04-17)
+
 ### [2.5.8](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7...v2.5.8) (2023-05-22)
 
 
