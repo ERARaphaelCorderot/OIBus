@@ -2,32 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### [2.5.7-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.1...v2.5.7-main.2) (2023-05-16)
+### [2.5.8](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7...v2.5.8) (2023-05-22)
+
+
+### Bug Fixes
+
+* **odbc:** Fix port settings on ODBC connection string ([6985b96](https://github.com/OptimistikSAS/OIBus/commit/6985b961093811c4d942e8525dd160f33836dfd9))
+
+### [2.5.7](https://github.com/OptimistikSAS/OIBus/compare/v2.5.6...v2.5.7) (2023-05-22)
 
 
 ### Bug Fixes
 
 * **history-query:** Fix History Query edition and run ([5f8f06a](https://github.com/OptimistikSAS/OIBus/commit/5f8f06a36156f11c80b18fdc62d351b63c517d77))
-
-### [2.5.7-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.0...v2.5.7-main.1) (2023-05-16)
-
-
-### Bug Fixes
-
-* **sql-south:** improve logging and send raw values if formatted result is not an array ([96d38cf](https://github.com/OptimistikSAS/OIBus/commit/96d38cfb266ae29da0b75309c06eabb9cd5bb2d3))
-
-### [2.5.7-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.6...v2.5.7-main.0) (2023-05-15)
-
-
-### Bug Fixes
-
 * **south-rest:** Fix Rest authentication and improve logs ([2d36489](https://github.com/OptimistikSAS/OIBus/commit/2d3648952460ed8e4cd888d7fd304d8d0b158e3d))
-
-### [2.5.4-main.3](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.2...v2.5.4-main.3) (2023-04-24)
-
-### [2.5.4-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.1...v2.5.4-main.2) (2023-04-17)
-
-### [2.5.4-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.3...v2.5.4-main.1) (2023-04-17)
+* **sql-south:** improve logging and send raw values if formatted result is not an array ([96d38cf](https://github.com/OptimistikSAS/OIBus/commit/96d38cfb266ae29da0b75309c06eabb9cd5bb2d3))
 
 ### [2.5.6](https://github.com/OptimistikSAS/OIBus/compare/v2.5.5...v2.5.6) (2023-05-11)
 

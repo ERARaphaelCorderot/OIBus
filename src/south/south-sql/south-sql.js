@@ -179,6 +179,9 @@ export default class SouthSQL extends SouthConnector {
       case 'odbc':
         result = await this.getDataFromOdbc(updatedStartTime, endTime)
         break
+      case 'ip21':
+        result = await this.getDataFromIp21(updatedStartTime, endTime)
+        break
       default:
         throw new Error(`SQL driver "${this.driver}" not supported for South "${this.name}".`)
     }
@@ -223,7 +226,7 @@ export default class SouthSQL extends SouthConnector {
         this.logger.debug(`No update for lastCompletedAt. Last value: ${this.lastCompletedAt[scanMode].toISOString()}.`)
       }
     } else {
-      this.logger.debug(`No result found between ${startTime.toISOString()} and ${endTime.toISOString()}.`)
+      this.logger.debug('No result found.')
     }
   }
 
@@ -447,13 +450,14 @@ export default class SouthSQL extends SouthConnector {
 
     const adaptedQuery = this.query.replace(/@StartTime/g, '?').replace(/@EndTime/g, '?')
 
-    let connectionString = `Driver=${this.odbcDriverPath};SERVER=${this.host};TrustServerCertificate=${this.selfSigned ? 'yes' : 'no'};`
-    connectionString += `Database=${this.database};UID=${this.username};PWD=${await this.encryptionService.decryptText(this.password)}`
+    let connectionString = `Driver=${this.odbcDriverPath};SERVER=${this.host},${this.port};TrustServerCertificate=${this.selfSigned ? 'yes' : 'no'};`
+    connectionString += `Database=${this.database};UID=${this.username}`
+    this.logger.debug(`Connecting with ODBC: ${`${connectionString};PWD=<secret>`}`)
     let connection = null
     let data = []
     try {
       const connectionConfig = {
-        connectionString,
+        connectionString: `${connectionString};PWD=${await this.encryptionService.decryptText(this.password)}`,
         connectionTimeout: this.connectionTimeout,
         loginTimeout: this.connectionTimeout,
       }
@@ -463,6 +467,54 @@ export default class SouthSQL extends SouthConnector {
       const endDateTime = DateTime.fromJSDate(endTime).toFormat('yyyy-MM-dd HH:mm:ss.SSS')
       const params = generateReplacementParameters(this.query, startDateTime, endDateTime)
       data = await connection.query(adaptedQuery, params)
+    } catch (error) {
+      if (error.odbcErrors?.length > 0) {
+        error.odbcErrors.forEach((odbcError) => {
+          this.logger.error(odbcError.message)
+        })
+      }
+      if (connection) {
+        await connection.close()
+      }
+      throw error
+    }
+    if (connection) {
+      await connection.close()
+    }
+    return data
+  }
+
+  /**
+   * Apply the SQL query to the target IP21 database with AspenTech SQLplus driver.
+   * @param {Date} startTime - The start time
+   * @param {Date} endTime - The end time
+   * @returns {Promise<Object[]>} - The SQL results
+   */
+  async getDataFromIp21(startTime, endTime) {
+    if (!odbc) {
+      throw new Error('odbc library not loaded.')
+    }
+
+    const adaptedQuery = this.query.replace(/@StartTime/g, '?').replace(/@EndTime/g, '?')
+
+    const connectionString = `Driver=AspenTech SQLplus;HOST=${this.host};PORT=${this.port}`
+    this.logger.debug(`Connecting with ODBC: ${connectionString}`)
+    let connection = null
+    let data = []
+    try {
+      const connectionConfig = {
+        connectionString: `${connectionString}`,
+        connectionTimeout: this.connectionTimeout,
+        loginTimeout: this.connectionTimeout,
+      }
+      connection = await odbc.connect(connectionConfig)
+
+      // Format datetime into ip21 format (29-NOV-23 21:03:59.123)
+      const startDateTime = DateTime.fromJSDate(startTime).toFormat('dd-MMM-yy HH:mm:ss.SSS').toUpperCase()
+      const endDateTime = DateTime.fromJSDate(endTime).toFormat('dd-MMM-yy HH:mm:ss.SSS').toUpperCase()
+      const params = generateReplacementParameters(this.query, startDateTime, endDateTime)
+      data = await connection.query(adaptedQuery, params)
+      this.logger.debug(`Found ${data?.length} data IP21`)
     } catch (error) {
       if (error.odbcErrors?.length > 0) {
         error.odbcErrors.forEach((odbcError) => {
