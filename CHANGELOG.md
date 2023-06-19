@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.11-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.10...v2.5.11-main.0) (2023-06-19)
+
+
+### Bug Fixes
+
+* **cache:** fix concurrent access to flush value method ([bd79200](https://github.com/OptimistikSAS/OIBus/commit/bd79200f310f0419c1b9247ca9b27413b5776b54))
+* **cache:** Remove file from queue when file has been moved to error cache ([73cf865](https://github.com/OptimistikSAS/OIBus/commit/73cf865912a20b4db4a67e0807ccbe038950ff38))
+* **http:** Check if file exists before creating read stream ([22d4831](https://github.com/OptimistikSAS/OIBus/commit/22d4831a216384be516329f4905b14b53344411a))
+* **ip21:** fix date format ([5201bf3](https://github.com/OptimistikSAS/OIBus/commit/5201bf33253d663cccd654c06c7d9b4a279e113c))
+* **north-oia:** adjust retriable status codes ([c155867](https://github.com/OptimistikSAS/OIBus/commit/c155867fc556481422af6a85c8db03918e0542b8))
+
+### [2.5.9-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.8...v2.5.9-main.0) (2023-06-08)
+
+### [2.5.7-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.1...v2.5.7-main.2) (2023-05-16)
+
+### [2.5.7-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.7-main.0...v2.5.7-main.1) (2023-05-16)
+
+### [2.5.7-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.6...v2.5.7-main.0) (2023-05-15)
+
+### [2.5.4-main.3](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.2...v2.5.4-main.3) (2023-04-24)
+
+### [2.5.4-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.4-main.1...v2.5.4-main.2) (2023-04-17)
+
+### [2.5.4-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.3...v2.5.4-main.1) (2023-04-17)
+
 ### [2.5.10](https://github.com/OptimistikSAS/OIBus/compare/v2.5.9...v2.5.10) (2023-06-16)
 
 
