@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.11-main.2](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-main.1...v2.5.11-main.2) (2023-06-21)
+
+
+### Bug Fixes
+
+* **opchda:** Fix warning agent log level ([25e5339](https://github.com/OptimistikSAS/OIBus/commit/25e53399c0f1aa454ae66a49d63fa412c3dae9b0))
+* **opchda:** Update OPCHDA agent to fix ReadRaw items ([fed6311](https://github.com/OptimistikSAS/OIBus/commit/fed6311ebfa4c82c698d24c72f87bc73cdbfa7f0))
+* **ui:** Fix log color display ([3a21b6c](https://github.com/OptimistikSAS/OIBus/commit/3a21b6cd493c7c5e404186ff1ec569126f11c681))
+* **ui:** Fix removal of text input value ([e97a97c](https://github.com/OptimistikSAS/OIBus/commit/e97a97c5e1a69632de9560215716908da69c00b0))
+
 ### [2.5.11-main.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-main.0...v2.5.11-main.1) (2023-06-19)
 
 ### [2.5.11-main.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.10...v2.5.11-main.0) (2023-06-19)
