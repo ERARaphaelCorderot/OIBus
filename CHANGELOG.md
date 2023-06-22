@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.11-main.5](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-main.4...v2.5.11-main.5) (2023-06-22)
+
+
+### Bug Fixes
+
+* update hda agent ([2c35b1b](https://github.com/OptimistikSAS/OIBus/commit/2c35b1ba3ce979655d7c6f22b9d211b56f58a55a))
+
 ### [2.5.11-main.4](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-main.3...v2.5.11-main.4) (2023-06-21)
 
 
