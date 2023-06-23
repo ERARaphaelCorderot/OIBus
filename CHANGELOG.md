@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.6.0-ip-21-rest.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.10...v2.6.0-ip-21-rest.0) (2023-06-23)
+
+
+### Features
+
+* **rest:** Add query string feature for IP21 API request ([1761911](https://github.com/OptimistikSAS/OIBus/commit/1761911094c228e443a1799ac6bbca05ad51c100))
+
+
+### Bug Fixes
+
+* **cache:** fix concurrent access to flush value method ([bd79200](https://github.com/OptimistikSAS/OIBus/commit/bd79200f310f0419c1b9247ca9b27413b5776b54))
+* **cache:** Remove file from queue when file has been moved to error cache ([73cf865](https://github.com/OptimistikSAS/OIBus/commit/73cf865912a20b4db4a67e0807ccbe038950ff38))
+* **http:** Check if file exists before creating read stream ([22d4831](https://github.com/OptimistikSAS/OIBus/commit/22d4831a216384be516329f4905b14b53344411a))
+* **ip21:** fix date format ([5201bf3](https://github.com/OptimistikSAS/OIBus/commit/5201bf33253d663cccd654c06c7d9b4a279e113c))
+* **north-oia:** adjust retriable status codes ([c155867](https://github.com/OptimistikSAS/OIBus/commit/c155867fc556481422af6a85c8db03918e0542b8))
+* **opchda:** Fix warning agent log level ([25e5339](https://github.com/OptimistikSAS/OIBus/commit/25e53399c0f1aa454ae66a49d63fa412c3dae9b0))
+* **opchda:** update agent deps ([bef1a71](https://github.com/OptimistikSAS/OIBus/commit/bef1a71933bdf6a5110b090717028982d52840df))
+* **opchda:** update hda agent deps ([ded4c9b](https://github.com/OptimistikSAS/OIBus/commit/ded4c9b2b2249e9dd32f60f4edbab5e9d077bec3))
+* **opchda:** Update OPCHDA agent to fix ReadRaw items ([fed6311](https://github.com/OptimistikSAS/OIBus/commit/fed6311ebfa4c82c698d24c72f87bc73cdbfa7f0))
+* **ui:** Fix log color display ([3a21b6c](https://github.com/OptimistikSAS/OIBus/commit/3a21b6cd493c7c5e404186ff1ec569126f11c681))
+* **ui:** Fix removal of text input value ([e97a97c](https://github.com/OptimistikSAS/OIBus/commit/e97a97c5e1a69632de9560215716908da69c00b0))
+
 ### [2.5.10](https://github.com/OptimistikSAS/OIBus/compare/v2.5.9...v2.5.10) (2023-06-16)
 
 
