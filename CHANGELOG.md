@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.11-main.6](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-main.5...v2.5.11-main.6) (2023-06-23)
+
+
+### Bug Fixes
+
+* **opchda:** Change log to debug and update agent ([89473bc](https://github.com/OptimistikSAS/OIBus/commit/89473bcf4069a7e0953d0b6603e42bcc7cd42995))
+
 ### [2.5.11-main.5](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-main.4...v2.5.11-main.5) (2023-06-22)
 
 
