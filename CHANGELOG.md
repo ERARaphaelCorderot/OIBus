@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.6.0-ip-21-rest.1](https://github.com/OptimistikSAS/OIBus/compare/v2.6.0-ip-21-rest.0...v2.6.0-ip-21-rest.1) (2023-06-26)
+
+
+### Bug Fixes
+
+* **rest:** Fix HTTP(S) protocol ([bdafee3](https://github.com/OptimistikSAS/OIBus/commit/bdafee349ff890d18ec15e62390a055f9f477024))
+
 ## [2.6.0-ip-21-rest.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.10...v2.6.0-ip-21-rest.0) (2023-06-23)
 
 
