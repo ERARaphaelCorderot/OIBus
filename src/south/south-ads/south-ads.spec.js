@@ -12,7 +12,7 @@ const addValues = jest.fn()
 const addFiles = jest.fn()
 
 // Mock fs
-jest.mock('node:fs/promises')
+jest.mock('fs/promises')
 
 // Mock services
 jest.mock('../../service/database.service')
