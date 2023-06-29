@@ -1,6 +1,6 @@
 {
   "name": "oibus",
-  "version": "2.5.10",
+  "version": "2.6.0-feat-south-odbc-remote.0",
   "main": "index.js",
   "author": "Optimistik SAS",
   "license": "EUPL",
