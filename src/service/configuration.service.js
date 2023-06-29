@@ -1,5 +1,5 @@
-import path from 'node:path'
-import fs from 'node:fs/promises'
+import path from 'path'
+import fs from 'fs/promises'
 
 import EncryptionService from './encryption.service.js'
 import { filesExists } from './utils.js'

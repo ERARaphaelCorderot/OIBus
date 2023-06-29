@@ -1,11 +1,11 @@
-import path from 'node:path'
-import fs from 'node:fs/promises'
+import path from 'path'
+import fs from 'fs/promises'
 
 import ArchiveService from './archive.service.js'
 
 import { createFolder } from '../utils.js'
 
-jest.mock('node:fs/promises')
+jest.mock('fs/promises')
 
 // Mock logger
 const logger = {

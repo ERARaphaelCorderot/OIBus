@@ -1,5 +1,5 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
+import fs from 'fs/promises'
+import path from 'path'
 
 import fetch from 'node-fetch'
 import RestApi from './south-rest.js'
