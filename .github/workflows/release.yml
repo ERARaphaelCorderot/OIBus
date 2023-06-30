@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  tests:
-    name: 'Test OIBus'
-    uses: ./.github/workflows/tests.yml
 
   standard-version:
     name: 'Bump OIBus version'
