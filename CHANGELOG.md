@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.11-oibus-node-12.1](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-oibus-node-12.0...v2.5.11-oibus-node-12.1) (2023-06-30)
+
 ### [2.5.11-oibus-node-12.0](https://github.com/OptimistikSAS/OIBus/compare/v2.5.10...v2.5.11-oibus-node-12.0) (2023-06-30)
 
 
