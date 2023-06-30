@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 
 jobs:
-
   standard-version:
     name: 'Bump OIBus version'
     needs: tests
