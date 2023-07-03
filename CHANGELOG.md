@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.11-main.7](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-main.6...v2.5.11-main.7) (2023-07-03)
+
+
+### Bug Fixes
+
+* **opchda:** Update OPCHDA agent to fix ReadRaw items ([de1ea23](https://github.com/OptimistikSAS/OIBus/commit/de1ea23f7cb863f16c64a3a4008357f5d1e35697))
+
 ### [2.5.11-main.6](https://github.com/OptimistikSAS/OIBus/compare/v2.5.11-main.5...v2.5.11-main.6) (2023-06-23)
 
 
