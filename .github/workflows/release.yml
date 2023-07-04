@@ -61,16 +61,16 @@ jobs:
 
   build-binaries:
     needs: standard-version
-    name: Build on ${{ matrix.config['os'] }}
+    name: Build for ${{ matrix.config['friendlyName'] }}
     runs-on: ${{ matrix.config['os'] }}
     strategy:
       matrix:
         config:
-          - { os: 'macos-latest',   platform: 'macos', archiveName: 'oibus-macos.zip', zip: 'zip -r' }
-          - { os: 'macos-latest',   platform: 'macos-arm64', archiveName: 'oibus-macos-arm64.zip', zip: 'zip -r' }
-          - { os: 'windows-latest', platform: 'win',   archiveName: 'oibus-win32x64.zip', zip: '7z a -tzip' }
-          - { os: 'ubuntu-latest',  platform: 'linux', archiveName: 'oibus-linux.tar.gz', zip: 'tar -czvf' }
-          - { os: 'ubuntu-latest',  platform: 'linux-arm64', archiveName: 'oibus-linux-arm64.tar.gz', zip: 'tar -czvf' }
+          - { friendlyName: 'Mac OS x64', os: 'macos-latest',   platform: 'macos', archiveName: 'oibus-macos.zip', zip: 'zip -r' }
+          - { friendlyName: 'Mac OS ARM64', os: 'macos-latest',   platform: 'macos-arm64', archiveName: 'oibus-macos-arm64.zip', zip: 'zip -r' }
+          - { friendlyName: 'Windows x64', os: 'windows-latest', platform: 'win',   archiveName: 'oibus-win32x64.zip', zip: '7z a -tzip' }
+          - { friendlyName: 'Linux x64', os: 'ubuntu-latest',  platform: 'linux', archiveName: 'oibus-linux.tar.gz', zip: 'tar -czvf' }
+          - { friendlyName: 'Linux ARM64', os: 'ubuntu-latest',  platform: 'linux-arm64', archiveName: 'oibus-linux-arm64.tar.gz', zip: 'tar -czvf' }
     timeout-minutes: 20
 
     steps:
@@ -84,11 +84,21 @@ jobs:
         with:
           cache_version: ${{ secrets.GH_ACTIONS_CACHE_KEY }}
 
-      - name: Package OIBus for ${{ matrix.config['platform'] }}
-        run: |
-          npm run build:${{ matrix.config['platform'] }}
+      - name: Build OIBus for ${{ matrix.config['friendlyName'] }}
+        run: npm run build:${{ matrix.config['platform'] }}
           cd build/bin/${{ matrix.config['platform'] }}
           ./oibus --config ../../../data-folder --check true
+          ${{ matrix.config['zip'] }} ../${{ matrix.config['archiveName'] }} .
+
+      - name: Test OIBus run for ${{ matrix.config['friendlyName'] }}
+        if: ${{ matrix.config['platform'] != 'macos-arm64' && matrix.config['platform'] != 'linux-arm64' }}
+        run: |
+          cd build/bin/${{ matrix.config['platform'] }}
+          ./oibus --config ../../../data-folder --check true
+
+      - name: Package OIBus for ${{ matrix.config['friendlyName'] }}
+        run: |
+          cd build/bin/${{ matrix.config['platform'] }}
           ${{ matrix.config['zip'] }} ../${{ matrix.config['archiveName'] }} .
 
       - name: Upload artifact ${{ matrix.config['archiveName'] }}
