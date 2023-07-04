@@ -21,7 +21,7 @@
     "test:integration": "jest --testPathPattern='.*\\.test\\.js$'",
     "lint": "eslint src --ext .jsx --ext .js",
     "lint:fix": "eslint src --ext .jsx --ext .js --fix",
-    "build:all": "npm ci && npm run build:win && npm run build:macos && npm run build:macos-arm64 && npm run build:linux",
+    "build:all": "npm ci && npm run build:win && npm run build:macos && npm run build:macos-arm64 && npm run build:linux && npm run build:linux-arm64",
     "build:win": "npm run internal:build:web-client && npm run internal:build:backend -- --removeComments && npm run internal:build:lib-win && rimraf ./build/bin/win && pkg ./build/backend/src/index.js --public --compress GZip --config package.json --output ./build/bin/win/oibus --target node16-win-x64 && ncp ./build/deps/win/HdaAgent ./build/bin/win/HdaAgent && ncp ./build/deps/win/nssm.exe ./build/bin/win/nssm.exe && ncp ./LICENSE ./build/bin/win/LICENSE",
     "build:macos": "npm run internal:build:web-client && npm run internal:build:backend -- --removeComments && npm run internal:build:lib-macos && rimraf ./build/bin/macos && pkg ./build/backend/src/index.js --public --compress GZip --config package.json --output ./build/bin/macos/oibus --target node16-macos-x64",
     "build:macos-arm64": "npm run internal:build:web-client && npm run internal:build:backend -- --removeComments && npm run internal:build:lib-macos-arm64 && rimraf ./build/bin/macos-arm64 && pkg ./build/backend/src/index.js --public --compress GZip --config package.json --output ./build/bin/macos-arm64/oibus --target node16-macos-arm64",
