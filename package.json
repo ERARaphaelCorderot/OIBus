@@ -1,6 +1,6 @@
 {
   "name": "oibus",
-  "version": "2.6.1",
+  "version": "2.6.2-azure-fix.0",
   "main": "index.js",
   "author": "Optimistik SAS",
   "license": "EUPL",

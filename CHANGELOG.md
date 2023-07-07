@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.6.2-azure-fix.0](https://github.com/OptimistikSAS/OIBus/compare/v2.6.1...v2.6.2-azure-fix.0) (2023-07-07)
+
+
+### Bug Fixes
+
+* **azure:** Fix Azure Blob connection ([08cdc89](https://github.com/OptimistikSAS/OIBus/commit/08cdc899c9f67d01996c5125e25b8d4ed829958f))
+
 ### [2.6.1](https://github.com/OptimistikSAS/OIBus/compare/v2.6.0...v2.6.1) (2023-07-06)
 
 
