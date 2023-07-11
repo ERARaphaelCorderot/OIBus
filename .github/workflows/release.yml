@@ -103,7 +103,7 @@ jobs:
           arch: 'arm64'
           os: linux
           config: package.json
-          options: --public --compress GZip --debug off
+          options: --public --compress GZip
           node-version: node16
 
       - name: Post build OIBus library for ${{ matrix.config['friendlyName'] }}
