@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.7.0-arm64.2](https://github.com/OptimistikSAS/OIBus/compare/v2.7.0-arm64.1...v2.7.0-arm64.2) (2023-07-11)
+
 ## [2.7.0-arm64.1](https://github.com/OptimistikSAS/OIBus/compare/v2.7.0-arm64.0...v2.7.0-arm64.1) (2023-07-11)
 
 ## [2.7.0-arm64.0](https://github.com/OptimistikSAS/OIBus/compare/v2.6.1...v2.7.0-arm64.0) (2023-07-11)
