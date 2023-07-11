@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.7.0-arm64.0](https://github.com/OptimistikSAS/OIBus/compare/v2.6.1...v2.7.0-arm64.0) (2023-07-11)
+
+
+### Features
+
+* Add Linux ARM64 binaries ([ffa3190](https://github.com/OptimistikSAS/OIBus/commit/ffa3190953e361b29ece9ad382fa5a247bc23629))
+
 ### [2.6.1](https://github.com/OptimistikSAS/OIBus/compare/v2.6.0...v2.6.1) (2023-07-06)
 
 
