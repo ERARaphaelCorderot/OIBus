@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.9.0-force-use-powershell.0](https://github.com/OptimistikSAS/OIBus/compare/v2.8.0...v2.9.0-force-use-powershell.0) (2023-07-19)
+
+
+### Features
+
+* **azure:** add powershell connection ([3e4299c](https://github.com/OptimistikSAS/OIBus/commit/3e4299c5d1f3d8c9c1062a1da8ca6f09f25e838d))
+
 ## [2.8.0](https://github.com/OptimistikSAS/OIBus/compare/v2.7.1...v2.8.0) (2023-07-13)
 
 
