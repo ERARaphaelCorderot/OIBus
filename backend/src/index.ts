@@ -77,7 +77,12 @@ const LOG_DB_NAME = 'logs.db';
 
   await createFolder(LOG_FOLDER_NAME);
   const loggerService = new LoggerService(encryptionService, path.resolve(LOG_FOLDER_NAME));
-  await loggerService.start(oibusSettings.id, oibusSettings.name, oibusSettings.logParameters);
+  await loggerService.start(
+    oibusSettings.id,
+    oibusSettings.name,
+    oibusSettings.logParameters,
+    repositoryService.registrationRepository.getRegistrationSettings()
+  );
 
   const northService = new NorthService(encryptionService, repositoryService);
   const southService = new SouthService(encryptionService, repositoryService);
@@ -101,7 +106,7 @@ const LOG_DB_NAME = 'logs.db';
     loggerService.logger!
   );
 
-  const commandService = new CommandService(oibusSettings.id, repositoryService, encryptionService, loggerService.logger!, binaryFolder);
+  const commandService = new CommandService(repositoryService, encryptionService, loggerService.logger!, binaryFolder);
   commandService.start();
 
   const oibusService = new OIBusService(
@@ -138,6 +143,7 @@ const LOG_DB_NAME = 'logs.db';
     southService,
     engine,
     historyQueryEngine,
+    oibusService,
     proxyServer
   );
   const server = new WebServer(

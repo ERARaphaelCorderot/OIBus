@@ -1,19 +1,19 @@
-import RepositoryService from './repository.service';
-import RepositoryServiceMock from '../tests/__mocks__/repository-service.mock';
-import EncryptionServiceMock from '../tests/__mocks__/encryption-service.mock';
-import EncryptionService from './encryption.service';
+import RepositoryService from '../repository.service';
+import RepositoryServiceMock from '../../tests/__mocks__/repository-service.mock';
+import EncryptionServiceMock from '../../tests/__mocks__/encryption-service.mock';
+import EncryptionService from '../encryption.service';
 import pino from 'pino';
-import PinoLogger from '../tests/__mocks__/logger.mock';
-import { OIBusCommandDTO } from '../../../shared/model/command.model';
+import PinoLogger from '../../tests/__mocks__/logger.mock';
+import { OIBusCommandDTO } from '../../../../shared/model/command.model';
 import CommandService from './command.service';
-import { downloadFile, getNetworkSettingsFromRegistration, getOIBusInfo, unzip } from './utils';
-import { RegistrationSettingsDTO } from '../../../shared/model/engine.model';
+import { downloadFile, getNetworkSettingsFromRegistration, getOIBusInfo, unzip } from '../utils';
+import { RegistrationSettingsDTO } from '../../../../shared/model/engine.model';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 jest.mock('node:fs/promises');
 jest.mock('node-fetch');
-jest.mock('./utils');
+jest.mock('../utils');
 
 // @ts-ignore
 jest.spyOn(process, 'exit').mockImplementation(() => {});
@@ -58,7 +58,7 @@ describe('Command service with running command', () => {
 
     (repositoryService.registrationRepository.getRegistrationSettings as jest.Mock).mockReturnValue(registration);
     (repositoryService.commandRepository.searchCommandsList as jest.Mock).mockReturnValue([command]);
-    service = new CommandService('oibusId', repositoryService, encryptionService, logger, 'binaryFolder');
+    service = new CommandService(repositoryService, encryptionService, logger, 'binaryFolder');
   });
 
   it('should properly start and stop', async () => {
@@ -127,7 +127,7 @@ describe('Command service without command', () => {
     jest.clearAllMocks();
 
     (repositoryService.commandRepository.searchCommandsList as jest.Mock).mockReturnValue([]);
-    service = new CommandService('oibusId', repositoryService, encryptionService, logger, 'binaryFolder');
+    service = new CommandService(repositoryService, encryptionService, logger, 'binaryFolder');
   });
 
   it('should properly start when not registered', () => {
