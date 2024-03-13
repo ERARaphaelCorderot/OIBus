@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 
 import ArchiveService from './archive.service';
 
@@ -12,6 +13,7 @@ import { NorthArchiveSettings } from '../../../../shared/model/north-connector.m
 
 jest.mock('../../service/utils');
 jest.mock('node:fs/promises');
+jest.mock('node:fs');
 
 const logger: pino.Logger = new PinoLogger();
 const anotherLogger: pino.Logger = new PinoLogger();
@@ -213,7 +215,7 @@ describe('ArchiveService', () => {
       expect(logger.error).toHaveBeenCalledWith(
         `Unable to remove archived file "${path.resolve('myCacheFolder', 'archive', filenames[2])}"`
       );
-      expect(logger.error).toBeCalledTimes(1);
+      expect(logger.error).toHaveBeenCalledTimes(1);
     });
 
     it('should remove all archived files', async () => {
@@ -224,12 +226,12 @@ describe('ArchiveService', () => {
       await archiveService.removeAllArchiveFiles();
 
       expect(archiveService.removeFiles).toHaveBeenCalledWith(filenames);
-      expect(archiveService.removeFiles).toBeCalledTimes(1);
+      expect(archiveService.removeFiles).toHaveBeenCalledTimes(1);
 
       expect(logger.debug).toHaveBeenLastCalledWith(
         `Removing ${filenames.length} files from "${path.resolve('myCacheFolder', 'archive')}"`
       );
-      expect(logger.debug).toBeCalledTimes(1);
+      expect(logger.debug).toHaveBeenCalledTimes(1);
     });
 
     it('should properly handle removing all files when folder is empty', async () => {
@@ -238,14 +240,36 @@ describe('ArchiveService', () => {
 
       await archiveService.removeAllArchiveFiles();
 
-      expect(removeFilesSpy).toBeCalledTimes(0);
+      expect(removeFilesSpy).toHaveBeenCalledTimes(0);
 
       expect(logger.debug).toHaveBeenLastCalledWith(
         `The archive folder "${path.resolve('myCacheFolder', 'archive')}" is empty. Nothing to delete`
       );
-      expect(logger.debug).toBeCalledTimes(1);
+      expect(logger.debug).toHaveBeenCalledTimes(1);
 
       removeFilesSpy.mockRestore();
+    });
+
+    it('should properly get archived file content', async () => {
+      const filename = 'myFile.csv';
+      (createReadStream as jest.Mock).mockImplementation(() => {});
+      await archiveService.getArchiveFileContent(filename);
+
+      expect(createReadStream).toHaveBeenCalledWith(path.resolve('myCacheFolder', 'archive', filename));
+    });
+
+    it('should handle error while getting archived file content', async () => {
+      const filename = 'myFile.csv';
+      const error = new Error('file does not exist');
+      (fs.stat as jest.Mock).mockImplementation(() => {
+        throw error;
+      });
+      const readStream = await archiveService.getArchiveFileContent(filename);
+
+      expect(readStream).toBeNull();
+      expect(logger.error).toHaveBeenCalledWith(
+        `Error while reading file "${path.resolve('myCacheFolder', 'archive', filename)}": ${error}`
+      );
     });
   });
 

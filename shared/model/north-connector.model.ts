@@ -1,6 +1,7 @@
 import { OibFormControl } from './form.model';
 import { BaseEntity, Instant } from './types';
 import { NorthSettings } from './north-settings.model';
+import { OIBusSubscription } from './subscription.model';
 
 export interface NorthCacheSettingsDTO {
   scanModeId: string;
@@ -54,6 +55,15 @@ export interface NorthConnectorCommandDTO<T extends NorthSettings = any> {
   archive: NorthArchiveSettings;
 }
 
+/**
+ * Command DTO for South connector
+ */
+export interface NorthConnectorWithItemsCommandDTO<> {
+  north: NorthConnectorDTO;
+  subscriptions: Array<OIBusSubscription>;
+  subscriptionsToDelete: Array<OIBusSubscription>;
+}
+
 export interface NorthConnectorManifest {
   id: string;
   category: string;
@@ -73,3 +83,8 @@ export interface NorthCacheFiles {
 }
 
 export interface NorthArchiveFiles extends NorthCacheFiles {}
+
+export interface NorthValueFiles {
+  filename: string;
+  valuesCount: number;
+}

@@ -14,9 +14,9 @@
           </button>
         </h1>
         <span class="text-disabled pull-right me-2">
-          {{ southConnector.id }}
+          <span translate="south.copy-cache-path" [translateParams]="{ id: southConnector.id }"></span>
           <i
-            class="fa fa-copy"
+            class="fa fa-copy ms-1"
             role="button"
             [cdkCopyToClipboard]="oibusInfo!.dataDirectory + '/cache/data-stream/south-' + southConnector.id"
             (cdkCopyToClipboardCopied)="onClipboardCopy($event)"
@@ -37,11 +37,7 @@
         <ng-template oibBoxTitle>
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <span
-                translate="south.specific-settings"
-                [translateParams]="{ type: southConnector.type }"
-                id="specific-settings-title"
-              ></span>
+              <span translate="south.specific-settings" [translateParams]="{ type: manifest.name }" id="specific-settings-title"></span>
             </div>
             <div>
               <button type="button" class="btn btn-primary btn-sm" id="test-connection" (click)="testConnection()">
@@ -58,7 +54,7 @@
               <td>{{ southConnector.enabled | enabled }}</td>
             </tr>
             <tr *ngFor="let setting of displayedSettings">
-              <td style="width: 33%">{{ setting.key }}</td>
+              <td>{{ setting.key }}</td>
               <td>{{ setting.value }}</td>
             </tr>
           </tbody>

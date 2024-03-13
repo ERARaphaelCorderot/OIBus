@@ -1,12 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { createFolder, generateRandomId } from '../utils';
+import { createFolder, generateRandomId, getFilesFiltered } from '../utils';
 import pino from 'pino';
 
-import { NorthCacheSettingsDTO } from '../../../../shared/model/north-connector.model';
+import { NorthCacheFiles, NorthCacheSettingsDTO, NorthValueFiles } from '../../../../shared/model/north-connector.model';
 import { EventEmitter } from 'node:events';
 import { OIBusDataValue } from '../../../../shared/model/engine.model';
+import { Instant } from '../../../../shared/model/types';
 
 const BUFFER_MAX = 250;
 const BUFFER_TIMEOUT = 300;
@@ -20,7 +21,7 @@ const ERROR_FOLDER = 'values-errors';
 export default class ValueCacheService {
   private _logger: pino.Logger;
   private readonly baseFolder: string;
-  private readonly valueFolder: string;
+  readonly valueFolder: string;
   private readonly errorFolder: string;
   private flushInProgress = false;
 
@@ -253,6 +254,14 @@ export default class ValueCacheService {
   }
 
   /**
+   * Remove all the values from the queue.
+   * Values are not used in this case
+   */
+  async removeAllValues(): Promise<void> {
+    this.removeSentValues(this.queue);
+  }
+
+  /**
    * Remove the key (filename) from the queues if it exists and remove the associated file
    */
   async deleteKeyFromCache(key: string): Promise<void> {
@@ -335,6 +344,80 @@ export default class ValueCacheService {
       this._logger.error(error);
     }
     return files.length === 0;
+  }
+
+  /**
+   * Returns metadata about files in the current queue.
+   */
+  getQueuedFilesMetadata(fileNameContains: string): Array<NorthValueFiles> {
+    const files: Array<NorthValueFiles> = [...this.queue.entries()]
+      .map(([filepath, value]) => ({
+        filename: path.basename(filepath),
+        valuesCount: value.length
+      }))
+      .filter(file => file.filename.toUpperCase().includes(fileNameContains.toUpperCase()));
+    return files;
+  }
+
+  /**
+   * Returns metadata about error value files.
+   */
+  async getErrorValueFiles(fromDate: Instant, toDate: Instant, nameFilter: string): Promise<Array<NorthCacheFiles>> {
+    return getFilesFiltered(this.errorFolder, fromDate, toDate, nameFilter, this._logger);
+  }
+
+  /**
+   * Remove error value files.
+   */
+  async removeErrorValues(filenames: Array<string>): Promise<void> {
+    for (const filename of filenames) {
+      const filePath = path.join(this.errorFolder, filename);
+      this.deleteKeyFromCache(filePath);
+    }
+  }
+
+  /**
+   * Remove all error value files.
+   */
+  async removeAllErrorValues(): Promise<void> {
+    const filenames = await fs.readdir(this.errorFolder);
+    if (filenames.length > 0) {
+      this._logger.debug(`Removing ${filenames.length} files from "${this.errorFolder}"`);
+      await this.removeErrorValues(filenames);
+    } else {
+      this._logger.debug(`The error value folder "${this.errorFolder}" is empty. Nothing to delete`);
+    }
+  }
+
+  /**
+   * Retry error value files.
+   */
+  async retryErrorValues(filenames: Array<string>): Promise<void> {
+    for (const filename of filenames) {
+      const filePath = path.join(this.errorFolder, filename);
+
+      try {
+        const fileContent = await fs.readFile(filePath, { encoding: 'utf8' });
+        const values = JSON.parse(fileContent);
+        await this.cacheValues(values);
+        await this.deleteKeyFromCache(filePath);
+      } catch (error) {
+        this._logger.error(`Error while reading error value file "${filePath}": ${error}`);
+      }
+    }
+  }
+
+  /**
+   * Retry all error value files.
+   */
+  async retryAllErrorValues(): Promise<void> {
+    const filenames = await fs.readdir(this.errorFolder);
+    if (filenames.length > 0) {
+      this._logger.debug(`Retrying ${filenames.length} files from "${this.errorFolder}"`);
+      await this.retryErrorValues(filenames);
+    } else {
+      this._logger.debug(`The error value folder "${this.errorFolder}" is empty. Nothing to retry`);
+    }
   }
 
   /**

@@ -175,7 +175,12 @@ export default class HistoryQueryRepository {
       name: result.name,
       description: result.description,
       status: result.status,
-      history: { maxInstantPerItem: result.maxInstantPerItem, readDelay: result.readDelay, maxReadInterval: result.maxReadInterval },
+      history: {
+        maxInstantPerItem: Boolean(result.maxInstantPerItem),
+        readDelay: result.readDelay,
+        maxReadInterval: result.maxReadInterval,
+        overlap: 0
+      },
       startTime: result.startTime,
       endTime: result.endTime,
       southType: result.southType,
@@ -188,11 +193,11 @@ export default class HistoryQueryRepository {
         retryInterval: result.cachingRetryInterval,
         retryCount: result.cachingRetryCount,
         maxSendCount: result.cachingMaxSendCount,
-        sendFileImmediately: result.cachingSendFileImmediately,
+        sendFileImmediately: Boolean(result.cachingSendFileImmediately),
         maxSize: result.cachingMaxSize
       },
       archive: {
-        enabled: result.archiveEnabled,
+        enabled: Boolean(result.archiveEnabled),
         retentionDuration: result.archiveRetentionDuration
       }
     };

@@ -23,6 +23,7 @@ export default jest.fn().mockImplementation(() => ({
   onCreateHistoryQuery: jest.fn(),
   onUpdateHistoryQuerySettings: jest.fn(),
   onStartHistoryQuery: jest.fn(),
+  onRestartHistoryQuery: jest.fn(),
   onPauseHistoryQuery: jest.fn(),
   onDeleteHistoryQuery: jest.fn(),
   onUpdateHistoryItemsSettings: jest.fn(),
@@ -41,18 +42,32 @@ export default jest.fn().mockImplementation(() => ({
     resetSouthMetrics: jest.fn(),
     resetNorthMetrics: jest.fn(),
     getErrorFiles: jest.fn(),
+    getErrorFileContent: jest.fn(),
     removeErrorFiles: jest.fn(),
     retryErrorFiles: jest.fn(),
     removeAllErrorFiles: jest.fn(),
     retryAllErrorFiles: jest.fn(),
     getArchiveFiles: jest.fn(),
+    getArchiveFileContent: jest.fn(),
     removeArchiveFiles: jest.fn(),
     retryArchiveFiles: jest.fn(),
     removeAllArchiveFiles: jest.fn(),
     retryAllArchiveFiles: jest.fn(),
     testSouth: jest.fn(),
     getCacheFiles: jest.fn(),
+    getCacheFileContent: jest.fn(),
     removeCacheFiles: jest.fn(),
-    archiveCacheFiles: jest.fn()
+    archiveCacheFiles: jest.fn(),
+    getCacheValues: jest.fn(),
+    removeCacheValues: jest.fn(),
+    removeAllCacheValues: jest.fn(),
+    getValueErrors: jest.fn(),
+    removeValueErrors: jest.fn(),
+    removeAllValueErrors: jest.fn(),
+    retryValueErrors: jest.fn(),
+    retryAllValueErrors: jest.fn()
+  },
+  proxyServer: {
+    refreshIpFilter: jest.fn()
   }
 }));

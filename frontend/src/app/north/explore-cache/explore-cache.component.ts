@@ -14,11 +14,13 @@ import { FileSizePipe } from '../../shared/file-size.pipe';
 import { ErrorFilesComponent } from './error-files/error-files.component';
 import { ArchiveFilesComponent } from './archive-files/archive-files.component';
 import { CacheFilesComponent } from './cache-files/cache-files.component';
+import { CacheValuesComponent } from './cache-values/cache-values.component';
+import { ErrorValuesComponent } from './error-values/error-values.component';
 
 @Component({
   selector: 'oib-explore-cache',
   templateUrl: './explore-cache.component.html',
-  styleUrls: ['./explore-cache.component.scss'],
+  styleUrl: './explore-cache.component.scss',
   imports: [
     ...formDirectives,
     TranslateModule,
@@ -32,7 +34,9 @@ import { CacheFilesComponent } from './cache-files/cache-files.component';
     RouterLink,
     ErrorFilesComponent,
     ArchiveFilesComponent,
-    CacheFilesComponent
+    CacheFilesComponent,
+    CacheValuesComponent,
+    ErrorValuesComponent
   ],
   standalone: true
 })
@@ -41,6 +45,9 @@ export class ExploreCacheComponent implements OnInit {
   @ViewChild(ArchiveFilesComponent) archiveFilesComponent!: ArchiveFilesComponent;
   @ViewChild(ErrorFilesComponent) errorFilesComponent!: ErrorFilesComponent;
   @ViewChild(CacheFilesComponent) cacheFilesComponent!: CacheFilesComponent;
+
+  @ViewChild(CacheValuesComponent) cacheValuesComponent!: CacheValuesComponent;
+  @ViewChild(ErrorValuesComponent) errorValuesComponent!: ErrorValuesComponent;
 
   constructor(
     private route: ActivatedRoute,
@@ -53,7 +60,7 @@ export class ExploreCacheComponent implements OnInit {
         switchMap(params => {
           const paramNorthId = params.get('northId');
           if (paramNorthId) {
-            return this.northConnectorService.getNorthConnector(paramNorthId);
+            return this.northConnectorService.get(paramNorthId);
           }
           return of(null);
         })
@@ -67,5 +74,8 @@ export class ExploreCacheComponent implements OnInit {
     this.errorFilesComponent.refreshErrorFiles();
     this.archiveFilesComponent.refreshArchiveFiles();
     this.cacheFilesComponent.refreshCacheFiles();
+
+    this.cacheValuesComponent.refreshCacheValues();
+    this.errorValuesComponent.refreshErrorValues();
   }
 }

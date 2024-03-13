@@ -17,12 +17,12 @@ import FileCacheServiceMock from '../../tests/__mocks__/file-cache-service.mock'
 import { NorthRestAPISettings } from '../../../../shared/model/north-settings.model';
 import ArchiveServiceMock from '../../tests/__mocks__/archive-service.mock';
 import { OIBusDataValue } from '../../../../shared/model/engine.model';
-import { createProxyAgent } from '../../service/proxy.service';
+import { createProxyAgent } from '../../service/proxy-agent';
 
 jest.mock('node:fs/promises');
 jest.mock('node:fs');
 jest.mock('../../service/utils');
-jest.mock('../../service/proxy.service');
+jest.mock('../../service/proxy-agent');
 
 jest.mock('node-fetch');
 const { Response } = jest.requireActual('node-fetch');
@@ -97,6 +97,7 @@ describe('NorthRestApi without proxy', () => {
     settings: {
       host: 'https://hostname/',
       acceptUnauthorized: false,
+      timeout: 30,
       valuesEndpoint: '/api/values',
       fileEndpoint: '/api/file',
       useProxy: false,
@@ -319,6 +320,7 @@ describe('NorthOIConnect with proxy but no password', () => {
       valuesEndpoint: '/api/values',
       fileEndpoint: '/api/file',
       useProxy: true,
+      timeout: 30,
       proxyUsername: 'proxy username',
       proxyPassword: null,
       authentication: {
@@ -429,6 +431,7 @@ describe('NorthOIConnect without authentication but with proxy', () => {
       valuesEndpoint: '/api/values',
       fileEndpoint: '/api/file',
       useProxy: true,
+      timeout: 30,
       proxyPassword: 'proxy password',
       proxyUsername: 'proxy password',
       authentication: {

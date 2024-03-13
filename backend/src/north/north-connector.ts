@@ -1,6 +1,6 @@
 import ArchiveService from '../service/cache/archive.service';
 
-import { NorthArchiveFiles, NorthCacheFiles, NorthConnectorDTO } from '../../../shared/model/north-connector.model';
+import { NorthArchiveFiles, NorthCacheFiles, NorthConnectorDTO, NorthValueFiles } from '../../../shared/model/north-connector.model';
 import pino from 'pino';
 import EncryptionService from '../service/encryption.service';
 import ValueCacheService from '../service/cache/value-cache.service';
@@ -14,11 +14,12 @@ import { OIBusDataValue, OIBusError } from '../../../shared/model/engine.model';
 import { ExternalSubscriptionDTO, SubscriptionDTO } from '../../../shared/model/subscription.model';
 import { DateTime } from 'luxon';
 import { PassThrough } from 'node:stream';
+import { ReadStream } from 'node:fs';
 import path from 'node:path';
 import { HandlesFile, HandlesValues } from './north-interface';
 import NorthConnectorMetricsService from '../service/north-connector-metrics.service';
 import { NorthSettings } from '../../../shared/model/north-settings.model';
-import { dirSize } from '../service/utils';
+import { dirSize, validateCronExpression } from '../service/utils';
 
 /**
  * Class NorthConnector : provides general attributes and methods for north connectors.
@@ -61,7 +62,7 @@ export default class NorthConnector<T extends NorthSettings = any> {
   constructor(
     protected connector: NorthConnectorDTO<T>,
     protected readonly encryptionService: EncryptionService,
-    private readonly repositoryService: RepositoryService,
+    protected readonly repositoryService: RepositoryService,
     protected logger: pino.Logger,
     protected readonly baseFolder: string
   ) {
@@ -182,15 +183,20 @@ export default class NorthConnector<T extends NorthSettings = any> {
       this.cronByScanModeIds.delete(scanMode.id);
     }
     this.logger.debug(`Creating North cron job for scan mode "${scanMode.name}" (${scanMode.cron})`);
-    const job = new CronJob(
-      scanMode.cron,
-      () => {
-        this.addToQueue(scanMode);
-      },
-      null,
-      true
-    );
-    this.cronByScanModeIds.set(scanMode.id, job);
+    try {
+      validateCronExpression(scanMode.cron);
+      const job = new CronJob(
+        scanMode.cron,
+        () => {
+          this.addToQueue(scanMode);
+        },
+        null,
+        true
+      );
+      this.cronByScanModeIds.set(scanMode.id, job);
+    } catch (error: any) {
+      this.logger.error(`Error when creating North cron job for scan mode "${scanMode.name}" (${scanMode.cron}): ${error.message}`);
+    }
   }
 
   addToQueue(scanMode: ScanModeDTO): void {
@@ -291,7 +297,7 @@ export default class NorthConnector<T extends NorthSettings = any> {
         this.metricsService!.updateMetrics(this.connector.id, {
           ...currentMetrics,
           numberOfFilesSent: currentMetrics.numberOfFilesSent + 1,
-          lastFileSent: this.fileBeingSent
+          lastFileSent: path.parse(this.fileBeingSent).base
         });
         this.fileCacheService.removeFileFromQueue();
         await this.archiveService.archiveOrRemoveFile(this.fileBeingSent);
@@ -432,6 +438,13 @@ export default class NorthConnector<T extends NorthSettings = any> {
   }
 
   /**
+   * Get error file content as a read stream.
+   */
+  async getErrorFileContent(filename: string): Promise<ReadStream | null> {
+    return await this.fileCacheService.getErrorFileContent(filename);
+  }
+
+  /**
    * Remove error files from file cache.
    */
   async removeErrorFiles(filenames: Array<string>): Promise<void> {
@@ -471,6 +484,13 @@ export default class NorthConnector<T extends NorthSettings = any> {
   }
 
   /**
+   * Get cache file content as a read stream.
+   */
+  async getCacheFileContent(filename: string): Promise<ReadStream | null> {
+    return await this.fileCacheService.getCacheFileContent(filename);
+  }
+
+  /**
    * Remove cache files.
    */
   async removeCacheFiles(filenames: Array<string>): Promise<void> {
@@ -494,6 +514,13 @@ export default class NorthConnector<T extends NorthSettings = any> {
    */
   async getArchiveFiles(fromDate: string, toDate: string, fileNameContains: string): Promise<Array<NorthArchiveFiles>> {
     return await this.archiveService.getArchiveFiles(fromDate, toDate, fileNameContains);
+  }
+
+  /**
+   * Get archive file content as a read stream.
+   */
+  async getArchiveFileContent(filename: string): Promise<ReadStream | null> {
+    return await this.archiveService.getArchiveFileContent(filename);
   }
 
   /**
@@ -539,6 +566,45 @@ export default class NorthConnector<T extends NorthSettings = any> {
   async resetCache(): Promise<void> {
     await this.fileCacheService.removeAllErrorFiles();
     await this.fileCacheService.removeAllCacheFiles();
+  }
+
+  getCacheValues(fileNameContains: string): Array<NorthValueFiles> {
+    return this.valueCacheService.getQueuedFilesMetadata(fileNameContains);
+  }
+
+  async removeCacheValues(filenames: Array<string>): Promise<void> {
+    const sentValues = new Map<string, OIBusDataValue[]>(
+      filenames.map(filename => [path.join(this.valueCacheService.valueFolder, filename), []])
+    );
+    await this.valueCacheService.removeSentValues(sentValues);
+  }
+
+  async removeAllCacheValues(): Promise<void> {
+    await this.valueCacheService.removeAllValues();
+  }
+
+  async getValueErrors(fromDate: string, toDate: string, fileNameContains: string): Promise<Array<NorthArchiveFiles>> {
+    return await this.valueCacheService.getErrorValueFiles(fromDate, toDate, fileNameContains);
+  }
+
+  async removeValueErrors(filenames: Array<string>): Promise<void> {
+    this.logger.trace(`Removing ${filenames.length} value error files from North connector "${this.connector.name}"...`);
+    await this.valueCacheService.removeErrorValues(filenames);
+  }
+
+  async removeAllValueErrors(): Promise<void> {
+    this.logger.trace(`Removing all value error files from North connector "${this.connector.name}"...`);
+    await this.valueCacheService.removeAllErrorValues();
+  }
+
+  async retryValueErrors(filenames: Array<string>): Promise<void> {
+    this.logger.trace(`Retrying ${filenames.length} value error files in North connector "${this.connector.name}"...`);
+    await this.valueCacheService.retryErrorValues(filenames);
+  }
+
+  async retryAllValueErrors(): Promise<void> {
+    this.logger.trace(`Retrying all value error files in North connector "${this.connector.name}"...`);
+    await this.valueCacheService.retryAllErrorValues();
   }
 
   getMetricsDataStream(): PassThrough {

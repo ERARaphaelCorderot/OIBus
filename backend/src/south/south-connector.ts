@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { CronJob } from 'cron';
-import { delay, generateIntervals } from '../service/utils';
+import { delay, generateIntervals, validateCronExpression } from '../service/utils';
 
 import { SouthCache, SouthConnectorDTO, SouthConnectorItemDTO } from '../../../shared/model/south-connector.model';
 import { ScanModeDTO } from '../../../shared/model/scan-mode.model';
@@ -16,6 +16,7 @@ import { QueriesFile, QueriesHistory, QueriesLastPoint, QueriesSubscription } fr
 import SouthConnectorMetricsService from '../service/south-connector-metrics.service';
 import { SouthItemSettings, SouthSettings } from '../../../shared/model/south-settings.model';
 import { OIBusDataValue } from '../../../shared/model/engine.model';
+import path from 'node:path';
 
 /**
  * Class SouthConnector : provides general attributes and methods for south connectors.
@@ -61,7 +62,7 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
     private engineAddValuesCallback: (southId: string, values: Array<OIBusDataValue>) => Promise<void>,
     private engineAddFileCallback: (southId: string, filePath: string) => Promise<void>,
     protected readonly encryptionService: EncryptionService,
-    private readonly repositoryService: RepositoryService,
+    protected readonly repositoryService: RepositoryService,
     protected logger: pino.Logger,
     protected readonly baseFolder: string
   ) {
@@ -140,15 +141,21 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
       this.cronByScanModeIds.delete(scanMode.id);
     }
     this.logger.debug(`Creating South cron job for scan mode "${scanMode.name}" (${scanMode.cron})`);
-    const job = new CronJob(
-      scanMode.cron,
-      () => {
-        this.addToQueue(scanMode);
-      },
-      null,
-      true
-    );
-    this.cronByScanModeIds.set(scanMode.id, job);
+
+    try {
+      validateCronExpression(scanMode.cron);
+      const job = new CronJob(
+        scanMode.cron,
+        () => {
+          this.addToQueue(scanMode);
+        },
+        null,
+        true
+      );
+      this.cronByScanModeIds.set(scanMode.id, job);
+    } catch (error: any) {
+      this.logger.error(`Error when creating South cron job for scan mode "${scanMode.name}" (${scanMode.cron}): ${error.message}`);
+    }
   }
 
   addToQueue(scanMode: ScanModeDTO): void {
@@ -262,10 +269,9 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
       for (const [index, item] of itemsToRead.entries()) {
         if (this.stopping) {
           this.logger.debug(`Connector is stopping. Exiting history query at item ${item.name}`);
-          this.metricsService!.updateMetrics(this.connector.id, {
-            ...this.metricsService!.metrics,
-            historyMetrics: { running: false }
-          });
+          const stoppedMetrics = structuredClone(this.metricsService!.metrics);
+          stoppedMetrics.historyMetrics.running = false;
+          this.metricsService!.updateMetrics(this.connector.id, stoppedMetrics);
           this.historyIsRunning = false;
           return;
         }
@@ -273,7 +279,11 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
         const southCache = this.cacheService!.getSouthCacheScanMode(this.connector.id, scanModeId, item.id, startTime);
         // maxReadInterval will divide a huge request (for example 1 year of data) into smaller
         // requests. For example only one hour if maxReadInterval is 3600 (in s)
-        const intervals = generateIntervals(southCache.maxInstant, endTime, this.connector.history.maxReadInterval);
+        const intervals = generateIntervals(
+          DateTime.fromISO(southCache.maxInstant).minus(this.connector.history.overlap).toUTC().toISO()!,
+          endTime,
+          this.connector.history.maxReadInterval
+        );
         this.logIntervals(intervals);
         await this.queryIntervals(intervals, [item], southCache, startTime);
         if (index !== itemsToRead.length - 1) {
@@ -289,10 +299,9 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
 
       await this.queryIntervals(intervals, itemsToRead, southCache, startTime);
     }
-    this.metricsService!.updateMetrics(this.connector.id, {
-      ...this.metricsService!.metrics,
-      historyMetrics: { running: false }
-    });
+    const stoppedMetrics = structuredClone(this.metricsService!.metrics);
+    stoppedMetrics.historyMetrics.running = false;
+    this.metricsService!.updateMetrics(this.connector.id, stoppedMetrics);
     this.historyIsRunning = false;
   }
 
@@ -306,44 +315,39 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
       ...this.metricsService!.metrics,
       historyMetrics: {
         running: true,
-        intervalProgress:
-          1 -
-          (DateTime.fromISO(intervals[intervals.length - 1].end).toMillis() - DateTime.fromISO(intervals[0].start).toMillis()) /
-            (DateTime.fromISO(intervals[intervals.length - 1].end).toMillis() - DateTime.fromISO(startTime).toMillis())
+        intervalProgress: this.calculateIntervalProgress(intervals, 0, startTime)
       }
     });
+
     for (const [index, interval] of intervals.entries()) {
       // @ts-ignore
       const lastInstantRetrieved = await this.historyQuery(items, interval.start, interval.end);
-      if (index !== intervals.length - 1) {
-        this.cacheService!.createOrUpdateCacheScanMode({
-          southId: this.connector.id,
-          scanModeId: southCache.scanModeId,
-          itemId: southCache.itemId,
-          maxInstant: lastInstantRetrieved
-        });
-        this.metricsService!.updateMetrics(this.connector.id, {
-          ...this.metricsService!.metrics,
-          historyMetrics: {
-            running: true,
-            intervalProgress:
-              1 -
-              (DateTime.fromISO(intervals[intervals.length - 1].end).toMillis() - DateTime.fromISO(interval.start).toMillis()) /
-                (DateTime.fromISO(intervals[intervals.length - 1].end).toMillis() - DateTime.fromISO(startTime).toMillis())
-          }
-        });
-        if (this.stopping) {
-          this.logger.debug(`Connector is stopping. Exiting history query at interval ${index}: [${interval.start}, ${interval.end}]`);
-          return;
+      this.cacheService!.createOrUpdateCacheScanMode({
+        southId: this.connector.id,
+        scanModeId: southCache.scanModeId,
+        itemId: southCache.itemId,
+        maxInstant: lastInstantRetrieved
+      });
+
+      this.metricsService!.updateMetrics(this.connector.id, {
+        ...this.metricsService!.metrics,
+        historyMetrics: {
+          running: true,
+          intervalProgress: this.calculateIntervalProgress(intervals, index, startTime),
+          currentIntervalStart: interval.start,
+          currentIntervalEnd: interval.end,
+          currentIntervalNumber: index + 1,
+          numberOfIntervals: intervals.length
         }
+      });
+
+      if (this.stopping) {
+        this.logger.debug(`Connector is stopping. Exiting history query at interval ${index}: [${interval.start}, ${interval.end}]`);
+        return;
+      }
+
+      if (index !== intervals.length - 1) {
         await delay(this.connector.history.readDelay);
-      } else {
-        this.cacheService!.createOrUpdateCacheScanMode({
-          southId: this.connector.id,
-          scanModeId: southCache.scanModeId,
-          itemId: southCache.itemId,
-          maxInstant: lastInstantRetrieved
-        });
       }
     }
   }
@@ -366,6 +370,28 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
     } else {
       this.logger.trace(`Querying interval: ${JSON.stringify(intervals[0], null, 2)}`);
     }
+  }
+
+  /**
+   * Calculate the progress of the current interval
+   */
+  private calculateIntervalProgress(intervals: Array<Interval>, currentIntervalIndex: number, startTime: Instant) {
+    // calculate progress based on time
+    const progress =
+      1 -
+      (DateTime.fromISO(intervals[intervals.length - 1].end).toMillis() -
+        DateTime.fromISO(intervals[currentIntervalIndex].start).toMillis()) /
+        (DateTime.fromISO(intervals[intervals.length - 1].end).toMillis() - DateTime.fromISO(startTime).toMillis());
+
+    // round to 2 decimals
+    const roundedProgress = Math.round((progress + Number.EPSILON) * 100) / 100;
+
+    // in the chance that the rounded progress is 0.99, but it's the last interval, we want to return 1
+    if (currentIntervalIndex === intervals.length - 1) {
+      return 1;
+    }
+
+    return roundedProgress;
   }
 
   /**
@@ -394,7 +420,7 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
     this.metricsService!.updateMetrics(this.connector.id, {
       ...currentMetrics,
       numberOfFilesRetrieved: currentMetrics.numberOfFilesRetrieved + 1,
-      lastFileRetrieved: filePath
+      lastFileRetrieved: path.parse(filePath).base
     });
   }
 
@@ -430,19 +456,23 @@ export default class SouthConnector<T extends SouthSettings = any, I extends Sou
   }
 
   async addItem(item: SouthConnectorItemDTO<I>): Promise<void> {
-    const scanMode = this.repositoryService.scanModeRepository.getScanMode(item.scanModeId);
-    if (!scanMode) {
-      this.logger.error(`Error when creating South item in cron jobs: scan mode ${item.scanModeId} not found`);
-      return;
-    }
-    this.items.push(item);
-    if (!this.isEnabled() || !item.enabled) {
-      return;
-    }
-    if (item.scanModeId === 'subscription' && item.enabled) {
-      await this.createSubscriptions([item]);
-    } else if (!this.cronByScanModeIds.get(scanMode.id) && item.enabled) {
-      this.createCronJob(scanMode);
+    if (item.scanModeId) {
+      const scanMode = this.repositoryService.scanModeRepository.getScanMode(item.scanModeId);
+      if (!scanMode) {
+        this.logger.error(`Error when creating South item in cron jobs: scan mode ${item.scanModeId} not found`);
+        return;
+      }
+      this.items.push(item);
+      if (!this.isEnabled() || !item.enabled) {
+        return;
+      }
+      if (item.scanModeId === 'subscription' && item.enabled) {
+        await this.createSubscriptions([item]);
+      } else if (!this.cronByScanModeIds.get(scanMode.id) && item.enabled) {
+        this.createCronJob(scanMode);
+      }
+    } else {
+      this.items.push(item);
     }
   }
 

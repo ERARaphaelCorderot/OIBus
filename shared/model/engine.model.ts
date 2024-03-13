@@ -1,6 +1,6 @@
 import { BaseEntity, Instant } from './types';
 
-export const SCOPE_TYPES = ['south', 'north', 'data-stream', 'history-engine', 'history-query', 'web-server', 'logger-service'];
+export const SCOPE_TYPES = ['south', 'north', 'history-query', 'internal', 'web-server'];
 export type ScopeType = (typeof SCOPE_TYPES)[number];
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug', 'trace'];
@@ -48,6 +48,11 @@ interface LokiLogSettings extends BaseLogSettings {
 }
 
 /**
+ * Settings to write logs into a remote loki instance
+ */
+interface OiaLogSettings extends BaseLogSettings {}
+
+/**
  * Logs settings used in the engine
  */
 export interface LogSettings {
@@ -55,6 +60,7 @@ export interface LogSettings {
   file: FileLogSettings;
   database: DatabaseLogSettings;
   loki: LokiLogSettings;
+  oia: OiaLogSettings;
 }
 
 /**
@@ -63,7 +69,39 @@ export interface LogSettings {
 export interface EngineSettingsDTO extends BaseEntity {
   name: string;
   port: number;
+  proxyEnabled: boolean;
+  proxyPort: number;
   logParameters: LogSettings;
+}
+
+export const REGISTRATION_STATUS = ['NOT_REGISTERED', 'PENDING', 'REGISTERED'] as const;
+export type RegistrationStatus = (typeof REGISTRATION_STATUS)[number];
+
+/**
+ * Registration settings DTO
+ */
+export interface RegistrationSettingsDTO extends BaseEntity {
+  host: string;
+  activationCode?: string;
+  token?: string;
+  status: RegistrationStatus;
+  activationDate: Instant;
+  activationExpirationDate?: Instant;
+  checkUrl?: string;
+  useProxy: boolean;
+  proxyUrl?: string;
+  proxyUsername?: string | null;
+  proxyPassword?: string | null;
+  acceptUnauthorized: boolean;
+}
+
+export interface RegistrationSettingsCommandDTO {
+  host: string;
+  useProxy: boolean;
+  proxyUrl?: string;
+  proxyUsername?: string | null;
+  proxyPassword?: string | null;
+  acceptUnauthorized: boolean;
 }
 
 export interface CryptoSettings {
@@ -78,6 +116,8 @@ export interface CryptoSettings {
 export interface EngineSettingsCommandDTO {
   name: string;
   port: number;
+  proxyEnabled: boolean;
+  proxyPort: number;
   logParameters: LogSettings;
 }
 
@@ -94,6 +134,7 @@ export interface OIBusInfo {
   hostname: string;
   operatingSystem: string;
   architecture: string;
+  platform: string;
 }
 
 export interface BaseConnectorMetrics {
@@ -111,7 +152,19 @@ export interface NorthConnectorMetrics extends BaseConnectorMetrics {
   cacheSize: number;
 }
 
-export interface SouthHistoryMetrics {}
+export interface SouthHistoryMetrics {
+  running?: boolean;
+  // Percentage of the current interval that has been processed [0,1]
+  intervalProgress?: number;
+  // Start of the current interval
+  currentIntervalStart?: Instant;
+  // End of the current interval
+  currentIntervalEnd?: Instant;
+  // Number of the current interval
+  currentIntervalNumber?: number;
+  // Maximum number of intervals
+  numberOfIntervals?: number;
+}
 
 export interface SouthConnectorMetrics extends BaseConnectorMetrics {
   numberOfValuesRetrieved: number;

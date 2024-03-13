@@ -2,16 +2,6 @@
 import Router from '@koa/router';
 import multer from '@koa/multer';
 
-import {
-  engineSchema,
-  externalSourceSchema,
-  historyQuerySchema,
-  ipFilterSchema,
-  logSchema,
-  scanModeSchema,
-  userSchema
-} from '../../engine/oibus-validation-schema';
-
 import LogController from '../controllers/log.controller';
 import ScanModeController from '../controllers/scan-mode.controller';
 import ExternalSourceController from '../controllers/external-source.controller';
@@ -24,11 +14,29 @@ import HistoryQueryController from '../controllers/history-query.controller';
 import SubscriptionController from '../controllers/subscription.controller';
 import JoiValidator from '../controllers/validators/joi.validator';
 import { KoaContext } from '../koa';
+import CertificateController from '../controllers/certificate.controller';
+import RegistrationController from '../controllers/registration.controller';
+import {
+  certificateSchema,
+  commandSchema,
+  engineSchema,
+  externalSourceSchema,
+  historyQuerySchema,
+  ipFilterSchema,
+  logSchema,
+  registrationSchema,
+  scanModeSchema,
+  userSchema
+} from '../controllers/validators/oibus-validation-schema';
+import CommandController from '../controllers/command.controller';
 
 const joiValidator = new JoiValidator();
 const scanModeController = new ScanModeController(joiValidator, scanModeSchema);
+const certificateController = new CertificateController(joiValidator, certificateSchema);
+const commandController = new CommandController(joiValidator, commandSchema);
 const externalSourceController = new ExternalSourceController(joiValidator, externalSourceSchema);
 const oibusController = new OibusController(joiValidator, engineSchema);
+const registrationController = new RegistrationController(joiValidator, registrationSchema);
 const ipFilterController = new IpFilterController(joiValidator, ipFilterSchema);
 const northConnectorController = new NorthConnectorController(joiValidator);
 const southConnectorController = new SouthConnectorController(joiValidator);
@@ -54,10 +62,17 @@ router.put('/api/users/:id/change-password', (ctx: KoaContext<any, any>) => user
 router.delete('/api/users/:id', (ctx: KoaContext<any, any>) => userController.deleteUser(ctx));
 
 router.get('/api/scan-modes', (ctx: KoaContext<any, any>) => scanModeController.getScanModes(ctx));
+router.post('/api/scan-modes/verify', (ctx: KoaContext<any, any>) => scanModeController.verifyScanMode(ctx));
 router.get('/api/scan-modes/:id', (ctx: KoaContext<any, any>) => scanModeController.getScanMode(ctx));
 router.post('/api/scan-modes', (ctx: KoaContext<any, any>) => scanModeController.createScanMode(ctx));
 router.put('/api/scan-modes/:id', (ctx: KoaContext<any, any>) => scanModeController.updateScanMode(ctx));
 router.delete('/api/scan-modes/:id', (ctx: KoaContext<any, any>) => scanModeController.deleteScanMode(ctx));
+
+router.get('/api/certificates', (ctx: KoaContext<any, any>) => certificateController.findAll(ctx));
+router.get('/api/certificates/:id', (ctx: KoaContext<any, any>) => certificateController.findById(ctx));
+router.post('/api/certificates', (ctx: KoaContext<any, any>) => certificateController.create(ctx));
+router.put('/api/certificates/:id', (ctx: KoaContext<any, any>) => certificateController.update(ctx));
+router.delete('/api/certificates/:id', (ctx: KoaContext<any, any>) => certificateController.delete(ctx));
 
 router.get('/api/external-sources', (ctx: KoaContext<any, any>) => externalSourceController.getExternalSources(ctx));
 router.get('/api/external-sources/:id', (ctx: KoaContext<any, any>) => externalSourceController.getExternalSource(ctx));
@@ -73,6 +88,10 @@ router.put('/api/shutdown', (ctx: KoaContext<any, any>) => oibusController.shutd
 router.post('/api/add-values', (ctx: KoaContext<any, any>) => oibusController.addValues(ctx));
 router.post('/api/add-file', upload.single('file'), (ctx: KoaContext<any, any>) => oibusController.addFile(ctx));
 router.get('/api/info', (ctx: KoaContext<any, any>) => oibusController.getOIBusInfo(ctx));
+
+router.get('/api/registration', (ctx: KoaContext<any, any>) => registrationController.getRegistrationSettings(ctx));
+router.put('/api/registration', (ctx: KoaContext<any, any>) => registrationController.updateRegistrationSettings(ctx));
+router.put('/api/registration/unregister', (ctx: KoaContext<any, any>) => registrationController.unregister(ctx));
 
 router.get('/api/ip-filters', (ctx: KoaContext<any, any>) => ipFilterController.getIpFilters(ctx));
 router.get('/api/ip-filters/:id', (ctx: KoaContext<any, any>) => ipFilterController.getIpFilter(ctx));
@@ -108,6 +127,9 @@ router.delete('/api/north/:northId/external-subscriptions/:externalSourceId', (c
   subscriptionController.deleteExternalNorthSubscription(ctx)
 );
 router.get('/api/north/:northId/cache/file-errors', (ctx: KoaContext<any, any>) => northConnectorController.getFileErrors(ctx));
+router.get('/api/north/:northId/cache/file-errors/:filename', (ctx: KoaContext<any, any>) =>
+  northConnectorController.getFileErrorContent(ctx)
+);
 router.post('/api/north/:northId/cache/file-errors/remove', (ctx: KoaContext<any, any>) => northConnectorController.removeFileErrors(ctx));
 router.post('/api/north/:northId/cache/file-errors/retry', (ctx: KoaContext<any, any>) => northConnectorController.retryErrorFiles(ctx));
 router.delete('/api/north/:northId/cache/file-errors/remove-all', (ctx: KoaContext<any, any>) =>
@@ -118,10 +140,14 @@ router.delete('/api/north/:northId/cache/file-errors/retry-all', (ctx: KoaContex
 );
 
 router.get('/api/north/:northId/cache/files', (ctx: KoaContext<any, any>) => northConnectorController.getCacheFiles(ctx));
+router.get('/api/north/:northId/cache/files/:filename', (ctx: KoaContext<any, any>) => northConnectorController.getCacheFileContent(ctx));
 router.post('/api/north/:northId/cache/files/remove', (ctx: KoaContext<any, any>) => northConnectorController.removeCacheFiles(ctx));
 router.post('/api/north/:northId/cache/files/archive', (ctx: KoaContext<any, any>) => northConnectorController.archiveCacheFiles(ctx));
 
 router.get('/api/north/:northId/cache/archive-files', (ctx: KoaContext<any, any>) => northConnectorController.getArchiveFiles(ctx));
+router.get('/api/north/:northId/cache/archive-files/:filename', (ctx: KoaContext<any, any>) =>
+  northConnectorController.getArchiveFileContent(ctx)
+);
 router.post('/api/north/:northId/cache/archive-files/remove', (ctx: KoaContext<any, any>) =>
   northConnectorController.removeArchiveFiles(ctx)
 );
@@ -136,6 +162,24 @@ router.delete('/api/north/:northId/cache/archive-files/retry-all', (ctx: KoaCont
 );
 
 router.put('/api/north/:northId/cache/reset-metrics', (ctx: KoaContext<any, any>) => northConnectorController.resetNorthMetrics(ctx));
+
+router.get('/api/north/:northId/cache/values', (ctx: KoaContext<any, any>) => northConnectorController.getCacheValues(ctx));
+router.post('/api/north/:northId/cache/values/remove', (ctx: KoaContext<any, any>) => northConnectorController.removeCacheValues(ctx));
+router.delete('/api/north/:northId/cache/values/remove-all', (ctx: KoaContext<any, any>) =>
+  northConnectorController.removeAllCacheValues(ctx)
+);
+
+router.get('/api/north/:northId/cache/value-errors', (ctx: KoaContext<any, any>) => northConnectorController.getValueErrors(ctx));
+router.post('/api/north/:northId/cache/value-errors/remove', (ctx: KoaContext<any, any>) =>
+  northConnectorController.removeValueErrors(ctx)
+);
+router.delete('/api/north/:northId/cache/value-errors/remove-all', (ctx: KoaContext<any, any>) =>
+  northConnectorController.removeAllValueErrors(ctx)
+);
+router.post('/api/north/:northId/cache/value-errors/retry', (ctx: KoaContext<any, any>) => northConnectorController.retryValueErrors(ctx));
+router.delete('/api/north/:northId/cache/value-errors/retry-all', (ctx: KoaContext<any, any>) =>
+  northConnectorController.retryAllValueErrors(ctx)
+);
 
 router.get('/api/south-types', (ctx: KoaContext<any, any>) => southConnectorController.getSouthConnectorTypes(ctx));
 router.get('/api/south-types/:id', (ctx: KoaContext<any, any>) => southConnectorController.getSouthConnectorManifest(ctx));
@@ -212,10 +256,18 @@ router.delete('/api/history-queries/:historyQueryId/south-items/all', (ctx: KoaC
 router.delete('/api/history-queries/:historyQueryId/south-items/:id', (ctx: KoaContext<any, any>) =>
   historyQueryController.deleteHistoryQueryItem(ctx)
 );
+router.put('/api/history-queries/:id/south/test-connection', (ctx: KoaContext<any, any>) =>
+  historyQueryController.testSouthConnection(ctx)
+);
+router.put('/api/history-queries/:id/north/test-connection', (ctx: KoaContext<any, any>) =>
+  historyQueryController.testNorthConnection(ctx)
+);
 
 router.get('/api/logs', (ctx: KoaContext<any, any>) => logController.searchLogs(ctx));
 router.get('/api/scope-logs/suggestions', (ctx: KoaContext<any, any>) => logController.suggestScopes(ctx));
 router.get('/api/scope-logs/:id', (ctx: KoaContext<any, any>) => logController.getScopeById(ctx));
 router.post('/api/logs', (ctx: KoaContext<any, any>) => logController.addLogs(ctx));
+
+router.get('/api/commands', (ctx: KoaContext<any, any>) => commandController.searchCommands(ctx));
 
 export default router;

@@ -31,7 +31,7 @@ declare namespace Intl {
 @Component({
   selector: 'oib-edit-south-item-modal',
   templateUrl: './edit-south-item-modal.component.html',
-  styleUrls: ['./edit-south-item-modal.component.scss'],
+  styleUrl: './edit-south-item-modal.component.scss',
   imports: [
     ...formDirectives,
     TranslateModule,
@@ -48,7 +48,7 @@ declare namespace Intl {
   standalone: true
 })
 export class EditSouthItemModalComponent {
-  mode: 'create' | 'edit' = 'create';
+  mode: 'create' | 'edit' | 'copy' = 'create';
   state = new ObservableState();
   subscriptionOnly = false;
   acceptSubscription = false;
@@ -66,6 +66,8 @@ export class EditSouthItemModalComponent {
     enabled: FormControl<boolean>;
     settings: FormGroup;
   }> | null = null;
+
+  maxInstantPerItem: boolean | null = null;
 
   private timezones: ReadonlyArray<Timezone> = Intl.supportedValuesOf('timeZone');
   timezoneTypeahead: (text$: Observable<string>) => Observable<Array<Timezone>> = inMemoryTypeahead(
@@ -132,7 +134,8 @@ export class EditSouthItemModalComponent {
     southItemSchema: SouthConnectorItemManifest,
     itemList: Array<SouthConnectorItemDTO>,
     scanModes: Array<ScanModeDTO>,
-    southItem: SouthConnectorItemDTO
+    southItem: SouthConnectorItemDTO,
+    maxInstantPerItem: boolean | null = null
   ) {
     this.mode = 'edit';
     this.itemList = itemList;
@@ -142,6 +145,7 @@ export class EditSouthItemModalComponent {
     this.southItemRows = groupFormControlsByRow(southItemSchema.settings);
     this.southItemSchema = southItemSchema;
     this.scanModes = scanModes;
+    this.maxInstantPerItem = maxInstantPerItem;
     this.createForm(southItem);
   }
 
@@ -151,7 +155,9 @@ export class EditSouthItemModalComponent {
   prepareForCopy(southItemSchema: SouthConnectorItemManifest, scanModes: Array<ScanModeDTO>, southItem: SouthConnectorItemDTO) {
     this.item = JSON.parse(JSON.stringify(southItem)) as SouthConnectorItemDTO;
     this.item.name = `${southItem.name}-copy`;
-    this.mode = 'create';
+    this.mode = 'copy';
+    this.subscriptionOnly = southItemSchema.scanMode.subscriptionOnly;
+    this.acceptSubscription = southItemSchema.scanMode.acceptSubscription;
     this.southItemSchema = southItemSchema;
     this.southItemRows = groupFormControlsByRow(southItemSchema.settings);
     this.scanModes = scanModes;
@@ -168,9 +174,21 @@ export class EditSouthItemModalComponent {
     }
 
     const formValue = this.form!.value;
+    let id;
+    switch (this.mode) {
+      case 'create':
+        id = '';
+        break;
+      case 'edit':
+        id = this.item ? this.item.id : '';
+        break;
+      case 'copy':
+        id = '';
+        break;
+    }
 
     const command: SouthConnectorItemCommandDTO = {
-      id: this.item ? this.item.id : '',
+      id,
       enabled: formValue.enabled!,
       name: formValue.name!,
       scanModeId: this.subscriptionOnly ? 'subscription' : formValue.scanModeId!,

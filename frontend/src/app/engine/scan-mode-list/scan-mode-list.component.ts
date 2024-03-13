@@ -9,13 +9,14 @@ import { ScanModeDTO } from '../../../../../shared/model/scan-mode.model';
 import { ScanModeService } from '../../services/scan-mode.service';
 import { EditScanModeModalComponent } from '../edit-scan-mode-modal/edit-scan-mode-modal.component';
 import { BoxComponent, BoxTitleDirective } from '../../shared/box/box.component';
+import { OibHelpComponent } from '../../shared/oib-help/oib-help.component';
 
 @Component({
   selector: 'oib-scan-mode-list',
   standalone: true,
-  imports: [NgIf, NgForOf, TranslateModule, BoxComponent, BoxTitleDirective],
+  imports: [NgIf, NgForOf, TranslateModule, BoxComponent, BoxTitleDirective, OibHelpComponent],
   templateUrl: './scan-mode-list.component.html',
-  styleUrls: ['./scan-mode-list.component.scss']
+  styleUrl: './scan-mode-list.component.scss'
 })
 export class ScanModeListComponent implements OnInit {
   scanModes: Array<ScanModeDTO> = [];

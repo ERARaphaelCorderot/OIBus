@@ -4,9 +4,11 @@ html {
   font-size: 12px;
 }
 
-$fa-font-path: '../fonts';
+// TODO use the SCSS import when https://github.com/angular/angular-cli/issues/26339 is fixed
+// $fa-font-path: '../fonts';
+// @import 'font-awesome/scss/font-awesome';
 
-@import 'font-awesome/scss/font-awesome';
+@import 'font-awesome/css/font-awesome';
 @import './custom-bootstrap';
 
 :root {
@@ -19,7 +21,7 @@ $fa-font-path: '../fonts';
   background-color: $veryLightGrey;
   border-radius: 1rem;
   width: 100%;
-  height:90%;
+  height: 90%;
   color: $darkGrey;
   padding: 1rem;
 }
@@ -49,7 +51,7 @@ $fa-font-path: '../fonts';
 
 .oib-modal-category-image {
   height: 3rem;
-  transform: translate(0%,30%);
+  transform: translate(0%, 30%);
 }
 
 .oib-modal-image-block {
@@ -82,7 +84,7 @@ img.oib-title-image {
 
 .oib-title {
   margin-top: 0.4rem;
-  margin-left: 1rem
+  margin-left: 1rem;
 }
 
 img.oib-image-header {
@@ -102,20 +104,20 @@ img.oib-image-header {
 }
 
 // customization of the button of datepicker
-  .datepicker-toggle {
+.datepicker-toggle {
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+  background-color: $yellow;
+  color: $darkGrey;
+  border: 0;
+  &:hover {
     border-top-right-radius: 1rem;
     border-bottom-right-radius: 1rem;
-    background-color: $yellow;
-    color: $darkGrey;
+    background-color: $electricBlue;
+    color: $white;
     border: 0;
-      &:hover {
-        border-top-right-radius: 1rem;
-        border-bottom-right-radius: 1rem;
-        background-color: $electricBlue;
-        color: $white;
-        border: 0;
-      }
   }
+}
 // change to yellow when hover a day in the ngb-datepicker
 .dropdown-menu.show {
   .btn-light {
@@ -124,13 +126,14 @@ img.oib-image-header {
   .btn-light:hover {
     background-color: $yellow;
   }
-  .btn-light:active, .bg-primary {
+  .btn-light:active,
+  .bg-primary {
     background-color: $electricBlue;
-    color:white;
+    color: white;
   }
   .bg-primary {
     background-color: $electricBlue;
-    color:white;
+    color: white;
   }
 }
 .ngb-dp-weekday.small {
@@ -205,10 +208,12 @@ img.oib-image-header {
     // first case of the first line
     th:first-child {
       border-top-left-radius: 1rem;
+      width: 3rem;
     }
     // last case of the first line
     th:last-child {
       border-top-right-radius: 1rem;
+      width: 9rem;
     }
     // alternative case if oib-box-title is on top of table
     .light {
@@ -223,6 +228,10 @@ img.oib-image-header {
       vertical-align: middle;
       padding-left: 1rem;
       border-bottom-width: 0;
+      max-width: 0;
+      text-overflow: clip;
+      overflow: hidden;
+      white-space: nowrap;
     }
     // line
     tr {
@@ -244,6 +253,7 @@ img.oib-image-header {
       td:last-child {
         text-align: right;
         padding-right: 1em;
+        overflow: visible;
       }
     }
     // customised colours on the lines (one out of two)
@@ -337,11 +347,11 @@ img.oib-image-header {
 .btn-outline-secondary {
   border: 1px $blue solid;
   color: $blue;
-    &:hover {
-      background-color: $blue;
-      color: white;
-      border: 1px $blue solid;
-    }
+  &:hover {
+    background-color: $blue;
+    color: white;
+    border: 1px $blue solid;
+  }
 }
 
 // margin for better readability
@@ -454,7 +464,7 @@ val-errors > div {
   background-color: $white !important;
   border-bottom-left-radius: 1rem;
   border-bottom-right-radius: 1rem;
-  border:0;
+  border: 0;
 }
 // customization of modal content colors
 .modal-content {
@@ -482,8 +492,8 @@ val-errors > div {
 
 // centered position of flex items in a modal
 .modal-container-list {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 // Suppression of border on not-first and not-last child of btn-group
@@ -508,7 +518,8 @@ val-errors > div {
   &:hover {
     color: $white;
     background-color: $yellow;
-  }}
+  }
+}
 
 // arrow to navigate
 .page-item {
@@ -575,7 +586,7 @@ val-errors > div {
   width: 1rem;
   height: 1rem;
   border-radius: 1rem;
-  background-color: #2478BE;
+  background-color: #2478be;
   margin-top: auto;
   margin-bottom: auto;
 }
@@ -593,3 +604,12 @@ val-errors > div {
 .text-disabled {
   color: $blue;
 }
+
+.save-zone {
+  box-sizing: content-box;
+  border-radius: 1rem;
+  //background-color: $lightGrey;
+  border: solid $lightGrey;
+    padding-bottom: 0.5em;
+}
+

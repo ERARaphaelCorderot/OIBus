@@ -89,7 +89,8 @@ export default class SouthConnectorController {
         manifest.settings
       );
       ctx.request.body!.name = southConnector ? southConnector.name : `${ctx.request.body!.type}:test-connection`;
-      const southToTest = ctx.app.southService.createSouth(command, [], this.addValues, this.addFile, 'baseFolder', ctx.app.logger);
+      const logger = ctx.app.logger.child({ scopeType: 'south', scopeId: command.id, scopeName: command.name }, { level: 'silent' });
+      const southToTest = ctx.app.southService.createSouth(command, [], this.addValues, this.addFile, 'baseFolder', logger);
       await southToTest.testConnection();
 
       ctx.noContent();
@@ -165,8 +166,10 @@ export default class SouthConnectorController {
       for (const itemId of ctx.request.body!.itemIdsToDelete) {
         await ctx.app.reloadService.onDeleteSouthItem(itemId);
       }
-      await ctx.app.reloadService.onCreateOrUpdateSouthItems(southConnector, itemsToAdd, itemsToUpdate, false);
+      // Update south connector first, because updating items takes into account the max instant per item setting,
+      // which might be changed in the south connector update
       await ctx.app.reloadService.onUpdateSouth(ctx.params.id, command);
+      await ctx.app.reloadService.onCreateOrUpdateSouthItems(southConnector, itemsToAdd, itemsToUpdate, false);
       ctx.noContent();
     } catch (error: any) {
       ctx.badRequest(error.message);
@@ -302,9 +305,9 @@ export default class SouthConnectorController {
       return ctx.throw(400, 'Could not parse item ids to delete array');
     }
 
-    if (file.mimetype !== 'text/csv') {
-      return ctx.badRequest();
-    }
+    // if (file.mimetype !== 'text/csv') {
+    //   return ctx.badRequest('Bad type of file');
+    // }
     const scanModes = ctx.app.repositoryService.scanModeRepository.getScanModes();
 
     const existingItems: Array<SouthConnectorItemDTO> =

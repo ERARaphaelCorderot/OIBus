@@ -1,34 +1,57 @@
 import React from 'react'
 import clsx from 'clsx'
 import styles from './styles.module.css'
+import Translate from "@docusaurus/Translate";
 
 const FeatureList = [
   {
-    title: 'Multi source',
+    title: (
+      <>
+        <Translate description="Multi source title">
+          Multi source
+        </Translate>
+      </>
+    ),
     Svg: require('@site/static/img/multi-source.svg').default,
     description: (
       <>
-        Access a variety of data sources securely and remotely, including databases and IoT devices.
+        <Translate description="Multi source feature">
+          Access a variety of data sources securely and remotely, including databases and IoT devices.
+        </Translate>
       </>
     ),
   },
   {
-    title: 'No code',
+    title: (
+      <>
+        <Translate description="No code title">
+          No code
+        </Translate>
+      </>
+    ),
     Svg: require('@site/static/img/no-code.svg').default,
     description: (
       <>
-        Using OIBus is simple: connect a data source and send your data at desired intervals directly from the web interface.
+        <Translate description="No code feature">
+          Using OIBus is simple: connect a data source and send your data at desired intervals directly from the web interface.
+        </Translate>
       </>
     ),
   },
   {
-    title: 'Real time',
+    title: (
+      <>
+        <Translate description="Real time title">
+          Real time
+        </Translate>
+      </>
+    ),
     Svg: require('@site/static/img/real-time.svg').default,
     description: (
-      <>
+      <Translate description="Real time feature">
         Manage your subscriptions and schedule tasks with high precision to adapt your data stream to your real-time
         needs.
-      </>
+      </Translate>
     ),
   },
 ]

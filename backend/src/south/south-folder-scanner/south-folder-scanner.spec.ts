@@ -112,7 +112,8 @@ const configuration: SouthConnectorDTO<SouthFolderScannerSettings> = {
   history: {
     maxInstantPerItem: true,
     maxReadInterval: 3600,
-    readDelay: 0
+    readDelay: 0,
+    overlap: 0
   },
   settings: {
     inputFolder: 'inputFolder',
@@ -324,11 +325,8 @@ describe('SouthFolderScanner test connection', () => {
       throw new Error(errorMessage);
     });
 
-    const folderRegex = new RegExp(`Folder '.*(${configuration.settings.inputFolder}).*' does not exist`);
-    await expect(south.testConnection()).rejects.toThrowError(folderRegex);
-
-    const accessRegex = new RegExp(`Access error on '.*(${configuration.settings.inputFolder}).*': ${errorMessage}`);
-    expect((logger.error as jest.Mock).mock.calls).toEqual([[expect.stringMatching(accessRegex)]]);
+    const accessRegex = new RegExp(`Folder ".*(${configuration.settings.inputFolder}).*" does not exist: ${errorMessage}`);
+    await expect(south.testConnection()).rejects.toThrow(accessRegex);
   });
 
   it('No read/write access', async () => {
@@ -339,10 +337,8 @@ describe('SouthFolderScanner test connection', () => {
         throw new Error(errorMessage);
       });
 
-    await expect(south.testConnection()).rejects.toThrowError('No read access on folder');
-
-    const accessRegex = new RegExp(`Access error on '.*(${configuration.settings.inputFolder}).*': ${errorMessage}`);
-    expect((logger.error as jest.Mock).mock.calls).toEqual([[expect.stringMatching(accessRegex)]]);
+    const accessRegex = new RegExp(`Read access error on ".*(${configuration.settings.inputFolder}).*": ${errorMessage}`);
+    await expect(south.testConnection()).rejects.toThrow(accessRegex);
   });
 
   it('Not a directory', async () => {
@@ -350,8 +346,7 @@ describe('SouthFolderScanner test connection', () => {
     (fs.stat as jest.Mock).mockReturnValue({
       isDirectory: () => false
     });
-    await expect(south.testConnection()).rejects.toThrowError(`${path.resolve(configuration.settings.inputFolder)} is not a directory`);
-    expect(logger.error).toHaveBeenCalledWith(`${path.resolve(configuration.settings.inputFolder)} is not a directory`);
+    await expect(south.testConnection()).rejects.toThrow(`${path.resolve(configuration.settings.inputFolder)} is not a directory`);
   });
 
   it('should properly test connection', async () => {
@@ -361,6 +356,5 @@ describe('SouthFolderScanner test connection', () => {
     });
     await south.testConnection();
     expect(logger.error).not.toHaveBeenCalled();
-    expect(logger.info).toHaveBeenCalledWith(`Folder "${path.resolve(configuration.settings.inputFolder)}" exists and is reachable`);
   });
 });

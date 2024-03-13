@@ -58,7 +58,7 @@ import { LegendComponent } from '../shared/legend/legend.component';
     LegendComponent
   ],
   templateUrl: './logs.component.html',
-  styleUrls: ['./logs.component.scss'],
+  styleUrl: './logs.component.scss',
   providers: [PageLoader]
 })
 export class LogsComponent implements OnInit, OnDestroy {
@@ -133,7 +133,13 @@ export class LogsComponent implements OnInit, OnDestroy {
     this.subscription.add(
       this.pageLoader.pageLoads$
         .pipe(
-          switchMap(page => timer(0, 10_000).pipe(map(() => page))),
+          switchMap(page => {
+            // only reload the page if the page is 0 and no end date is set
+            if (page === 0 && !this.searchForm.value.end) {
+              return timer(0, 10_000).pipe(map(() => page));
+            }
+            return [page];
+          }),
           exhaustMap(page => {
             this.searchParams = this.toSearchParams(this.route);
             this.loading = true;

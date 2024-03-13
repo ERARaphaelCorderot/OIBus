@@ -11,6 +11,8 @@ import { ActivatedRoute, provideRouter } from '@angular/router';
 import { provideI18nTesting } from '../../../i18n/mock-i18n';
 import { provideHttpClient } from '@angular/common/http';
 import { CacheFilesComponent } from './cache-files/cache-files.component';
+import { CacheValuesComponent } from './cache-values/cache-values.component';
+import { ErrorValuesComponent } from './error-values/error-values.component';
 
 class ExploreCacheComponentTester extends ComponentTester<ExploreCacheComponent> {
   constructor() {
@@ -30,6 +32,14 @@ class ExploreCacheComponentTester extends ComponentTester<ExploreCacheComponent>
 
   get cacheFiles(): CacheFilesComponent {
     return this.debugElement.query(By.directive(CacheFilesComponent)).componentInstance! as CacheFilesComponent;
+  }
+
+  get cacheValues(): CacheValuesComponent {
+    return this.debugElement.query(By.directive(CacheValuesComponent)).componentInstance! as CacheValuesComponent;
+  }
+
+  get errorValues(): ErrorValuesComponent {
+    return this.debugElement.query(By.directive(ErrorValuesComponent)).componentInstance! as ErrorValuesComponent;
   }
 }
 
@@ -72,10 +82,12 @@ describe('ExploreCacheComponent', () => {
         { provide: NorthConnectorService, useValue: northConnectorService }
       ]
     });
-    northConnectorService.getNorthConnector.and.returnValue(of(northConnector));
-    northConnectorService.getNorthConnectorCacheErrorFiles.and.returnValue(of([]));
-    northConnectorService.getNorthConnectorCacheArchiveFiles.and.returnValue(of([]));
-    northConnectorService.getNorthConnectorCacheFiles.and.returnValue(of([]));
+    northConnectorService.get.and.returnValue(of(northConnector));
+    northConnectorService.getCacheErrorFiles.and.returnValue(of([]));
+    northConnectorService.getCacheArchiveFiles.and.returnValue(of([]));
+    northConnectorService.getCacheFiles.and.returnValue(of([]));
+    northConnectorService.getCacheValues.and.returnValue(of([]));
+    northConnectorService.getCacheErrorValues.and.returnValue(of([]));
     tester = new ExploreCacheComponentTester();
     tester.detectChanges();
   });
@@ -85,5 +97,7 @@ describe('ExploreCacheComponent', () => {
     expect(tester.errorFiles).toBeDefined();
     expect(tester.archiveFiles).toBeDefined();
     expect(tester.cacheFiles).toBeDefined();
+    expect(tester.cacheValues).toBeDefined();
+    expect(tester.errorValues).toBeDefined();
   });
 });

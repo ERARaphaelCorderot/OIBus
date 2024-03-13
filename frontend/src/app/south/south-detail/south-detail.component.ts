@@ -43,7 +43,7 @@ import { ClipboardModule } from '@angular/cdk/clipboard';
     ClipboardModule
   ],
   templateUrl: './south-detail.component.html',
-  styleUrls: ['./south-detail.component.scss'],
+  styleUrl: './south-detail.component.scss',
   providers: [PageLoader]
 })
 export class SouthDetailComponent implements OnInit, OnDestroy {
@@ -122,7 +122,8 @@ export class SouthDetailComponent implements OnInit, OnDestroy {
       history: {
         maxInstantPerItem: this.southConnector!.history!.maxInstantPerItem,
         maxReadInterval: this.southConnector!.history!.maxReadInterval,
-        readDelay: this.southConnector!.history!.readDelay
+        readDelay: this.southConnector!.history!.readDelay,
+        overlap: this.southConnector!.history!.overlap
       },
       settings: this.southConnector!.settings
     };

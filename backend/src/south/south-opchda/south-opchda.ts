@@ -4,7 +4,7 @@ import { SouthConnectorDTO, SouthConnectorItemDTO } from '../../../../shared/mod
 import EncryptionService from '../../service/encryption.service';
 import RepositoryService from '../../service/repository.service';
 import pino from 'pino';
-import { Instant } from '../../../../shared/model/types';
+import { Aggregate, Instant, Resampling } from '../../../../shared/model/types';
 import { DateTime } from 'luxon';
 import { QueriesHistory } from '../south-interface';
 import { SouthOPCHDAItemSettings, SouthOPCHDASettings } from '../../../../shared/model/south-settings.model';
@@ -42,7 +42,8 @@ export default class SouthOPCHDA extends SouthConnector implements QueriesHistor
       const fetchOptions = {
         method: 'PUT',
         body: JSON.stringify({
-          url: this.connector.settings.serverUrl
+          host: this.connector.settings.host,
+          serverName: this.connector.settings.serverName
         }),
         headers
       };
@@ -59,29 +60,23 @@ export default class SouthOPCHDA extends SouthConnector implements QueriesHistor
   }
 
   async testConnection(): Promise<void> {
-    this.logger.info(
-      `Testing OPC OIBus Agent connection on ${this.connector.settings.agentUrl} with "${this.connector.settings.serverUrl}"`
-    );
-
     const headers: Record<string, string> = {};
     headers['Content-Type'] = 'application/json';
     const fetchOptions = {
       method: 'PUT',
       body: JSON.stringify({
-        url: this.connector.settings.serverUrl
+        host: this.connector.settings.host,
+        serverName: this.connector.settings.serverName
       }),
       headers
     };
     const response = await fetch(`${this.connector.settings.agentUrl!}/api/opc/${this.connector.id}/connect`, fetchOptions);
     if (response.status === 200) {
-      this.logger.info('Connected to remote OPC server. Disconnecting...');
       await fetch(`${this.connector.settings.agentUrl}/api/opc/${this.connector.id}/disconnect`, { method: 'DELETE' });
     } else if (response.status === 400) {
       const errorMessage = await response.text();
-      this.logger.error(`Error occurred when sending connect command to remote agent with status ${response.status}: ${errorMessage}`);
-      throw new Error(`Error occurred when sending connect command to remote agent with status ${response.status}: ${errorMessage}`);
+      throw new Error(`Error occurred when sending connect command to remote agent with status ${response.status}. ${errorMessage}`);
     } else {
-      this.logger.error(`Error occurred when sending connect command to remote agent with status ${response.status}`);
       throw new Error(`Error occurred when sending connect command to remote agent with status ${response.status}`);
     }
   }
@@ -92,45 +87,74 @@ export default class SouthOPCHDA extends SouthConnector implements QueriesHistor
    */
   async historyQuery(items: Array<SouthConnectorItemDTO<SouthOPCHDAItemSettings>>, startTime: Instant, endTime: Instant): Promise<Instant> {
     let updatedStartTime = startTime;
-    const startRequest = DateTime.now().toMillis();
-
-    const headers: Record<string, string> = {};
-    headers['Content-Type'] = 'application/json';
-
-    const fetchOptions = {
-      method: 'PUT',
-      body: JSON.stringify({
-        url: this.connector.settings.url,
-        startTime,
-        endTime,
-        items
-      }),
-      headers
-    };
-    const response = await fetch(`${this.connector.settings.agentUrl}/api/opc/${this.connector.id}/read`, fetchOptions);
-    if (response.status === 200) {
-      const result: { recordCount: number; content: Array<OIBusDataValue>; maxInstantRetrieved: Instant } = (await response.json()) as {
-        recordCount: number;
-        content: OIBusDataValue[];
-        maxInstantRetrieved: string;
-      };
-      const requestDuration = DateTime.now().toMillis() - startRequest;
-
-      if (result.content.length > 0) {
-        await this.addValues(result.content);
-        if (result.maxInstantRetrieved > updatedStartTime) {
-          updatedStartTime = result.maxInstantRetrieved;
-        }
-      } else {
-        this.logger.debug(`No result found. Request done in ${requestDuration} ms`);
+    const itemsByAggregates = new Map<Aggregate, Map<Resampling | undefined, Array<{ nodeId: string; name: string }>>>();
+    items.forEach(item => {
+      if (!itemsByAggregates.has(item.settings.aggregate)) {
+        itemsByAggregates.set(
+          item.settings.aggregate,
+          new Map<
+            Resampling,
+            Array<{
+              nodeId: string;
+              name: string;
+            }>
+          >()
+        );
       }
-    } else if (response.status === 400) {
-      const errorMessage = await response.text();
-      this.logger.error(`Error occurred when querying remote agent with status ${response.status}: ${errorMessage}`);
-    } else {
-      this.logger.error(`Error occurred when querying remote agent with status ${response.status}`);
-    }
+      const resampling = item.settings.resampling ? item.settings.resampling : 'none';
+      if (!itemsByAggregates.get(item.settings.aggregate!)!.has(resampling)) {
+        itemsByAggregates.get(item.settings.aggregate)!.set(resampling, [{ name: item.name, nodeId: item.settings.nodeId }]);
+      } else {
+        const currentList = itemsByAggregates.get(item.settings.aggregate)!.get(resampling)!;
+        currentList.push({ name: item.name, nodeId: item.settings.nodeId });
+        itemsByAggregates.get(item.settings.aggregate)!.set(resampling, currentList);
+      }
+    });
 
+    for (const [aggregate, aggregatedItems] of itemsByAggregates.entries()) {
+      for (const [resampling, resampledItems] of aggregatedItems.entries()) {
+        this.logger.debug(`Requesting ${resampledItems.length} items with aggregate ${aggregate} and resampling ${resampling}`);
+        const startRequest = DateTime.now().toMillis();
+        const headers: Record<string, string> = {};
+        headers['Content-Type'] = 'application/json';
+        const fetchOptions = {
+          method: 'PUT',
+          body: JSON.stringify({
+            host: this.connector.settings.host,
+            serverName: this.connector.settings.serverName,
+            aggregate,
+            resampling,
+            startTime,
+            endTime,
+            items: resampledItems
+          }),
+          headers
+        };
+        const response = await fetch(`${this.connector.settings.agentUrl}/api/opc/${this.connector.id}/read`, fetchOptions);
+        if (response.status === 200) {
+          const result: { recordCount: number; content: Array<OIBusDataValue>; maxInstantRetrieved: Instant } = (await response.json()) as {
+            recordCount: number;
+            content: OIBusDataValue[];
+            maxInstantRetrieved: string;
+          };
+          const requestDuration = DateTime.now().toMillis() - startRequest;
+
+          if (result.content.length > 0) {
+            await this.addValues(result.content);
+            if (result.maxInstantRetrieved > updatedStartTime) {
+              updatedStartTime = result.maxInstantRetrieved;
+            }
+          } else {
+            this.logger.debug(`No result found. Request done in ${requestDuration} ms`);
+          }
+        } else if (response.status === 400) {
+          const errorMessage = await response.text();
+          this.logger.error(`Error occurred when querying remote agent with status ${response.status}: ${errorMessage}`);
+        } else {
+          this.logger.error(`Error occurred when querying remote agent with status ${response.status}`);
+        }
+      }
+    }
     return updatedStartTime;
   }
 
@@ -140,14 +164,15 @@ export default class SouthOPCHDA extends SouthConnector implements QueriesHistor
     }
     this.reconnectTimeout = null;
 
-    this.connected = false;
-
-    try {
-      const fetchOptions = { method: 'DELETE' };
-      await fetch(`${this.connector.settings.agentUrl}/api/opc/${this.connector.id}/disconnect`, fetchOptions);
-    } catch (error) {
-      this.logger.error(`Error while sending disconnection HTTP request into agent. ${error}`);
+    if (this.connected) {
+      try {
+        const fetchOptions = { method: 'DELETE' };
+        await fetch(`${this.connector.settings.agentUrl}/api/opc/${this.connector.id}/disconnect`, fetchOptions);
+      } catch (error) {
+        this.logger.error(`Error while sending disconnection HTTP request into agent. ${error}`);
+      }
     }
+    this.connected = false;
     await super.disconnect();
   }
 }

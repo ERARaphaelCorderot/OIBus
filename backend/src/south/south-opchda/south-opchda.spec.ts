@@ -60,8 +60,8 @@ const items: Array<SouthConnectorItemDTO<SouthOPCHDAItemSettings>> = [
     connectorId: 'southId',
     settings: {
       nodeId: 'ns=3;s=Random',
-      aggregate: 'Raw',
-      resampling: 'None'
+      aggregate: 'raw',
+      resampling: 'none'
     },
     scanModeId: 'scanModeId1'
   },
@@ -72,8 +72,7 @@ const items: Array<SouthConnectorItemDTO<SouthOPCHDAItemSettings>> = [
     connectorId: 'southId',
     settings: {
       nodeId: 'ns=3;s=Counter',
-      aggregate: 'Raw',
-      resampling: 'None'
+      aggregate: 'raw'
     },
     scanModeId: 'scanModeId1'
   },
@@ -84,8 +83,8 @@ const items: Array<SouthConnectorItemDTO<SouthOPCHDAItemSettings>> = [
     connectorId: 'southId',
     settings: {
       nodeId: 'ns=3;s=Triangle',
-      aggregate: 'Raw',
-      resampling: 'None'
+      aggregate: 'average',
+      resampling: '10Seconds'
     },
     scanModeId: 'scanModeId2'
   }
@@ -100,14 +99,14 @@ const configuration: SouthConnectorDTO<SouthOPCHDASettings> = {
   history: {
     maxInstantPerItem: true,
     maxReadInterval: 3600,
-    readDelay: 0
+    readDelay: 0,
+    overlap: 0
   },
   settings: {
     agentUrl: 'http://localhost:2224',
     retryInterval: 1000,
-    maxReturnValues: 0,
-    readTimeout: 60,
-    serverUrl: 'opchda://localhost/Matrikon.OPC.Simulation'
+    host: 'localhost',
+    serverName: 'Matrikon.OPC.Simulation'
   }
 };
 let south: SouthOPCHDA;
@@ -125,7 +124,8 @@ describe('South OPCHDA', () => {
     expect(fetch).toHaveBeenCalledWith(`${configuration.settings.agentUrl}/api/opc/${configuration.id}/connect`, {
       method: 'PUT',
       body: JSON.stringify({
-        url: configuration.settings.serverUrl
+        host: configuration.settings.host,
+        serverName: configuration.settings.serverName
       }),
       headers: {
         'Content-Type': 'application/json'
@@ -147,7 +147,8 @@ describe('South OPCHDA', () => {
     expect(fetch).toHaveBeenCalledWith(`${configuration.settings.agentUrl}/api/opc/${configuration.id}/connect`, {
       method: 'PUT',
       body: JSON.stringify({
-        url: configuration.settings.serverUrl
+        host: configuration.settings.host,
+        serverName: configuration.settings.serverName
       }),
       headers: {
         'Content-Type': 'application/json'
@@ -159,7 +160,7 @@ describe('South OPCHDA', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it('should properly clear reconnect timeout on disconnect', async () => {
+  it('should properly clear reconnect timeout on disconnect when not connected', async () => {
     (fetch as unknown as jest.Mock)
       .mockImplementationOnce(() => {
         throw new Error('connection failed');
@@ -176,12 +177,32 @@ describe('South OPCHDA', () => {
     await south.disconnect();
     expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
     jest.advanceTimersByTime(configuration.settings.retryInterval);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(1);
     expect(logger.error).toHaveBeenCalledWith(
       `Error while sending connection HTTP request into agent. Reconnecting in ${configuration.settings.retryInterval} ms. ${new Error(
         'connection failed'
       )}`
     );
+  });
+
+  it('should properly clear reconnect timeout on disconnect when connected', async () => {
+    (fetch as unknown as jest.Mock)
+      .mockImplementationOnce(() => {
+        return true;
+      })
+      .mockImplementationOnce(() => {
+        throw new Error('disconnection failed');
+      });
+
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+
+    await south.connect();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await south.disconnect();
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(0);
+    jest.advanceTimersByTime(configuration.settings.retryInterval);
+    expect(fetch).toHaveBeenCalledTimes(2);
     expect(logger.error).toHaveBeenCalledWith(
       `Error while sending disconnection HTTP request into agent. ${new Error('disconnection failed')}`
     );
@@ -193,11 +214,7 @@ describe('South OPCHDA', () => {
         status: 200
       })
     );
-    await south.testConnection();
-    expect(logger.info).toHaveBeenCalledWith('Connected to remote OPC server. Disconnecting...');
-    expect(logger.info).toHaveBeenCalledWith(
-      `Testing OPC OIBus Agent connection on ${configuration.settings.agentUrl} with "${configuration.settings.serverUrl}"`
-    );
+    await expect(south.testConnection()).resolves.not.toThrow();
   });
 
   it('should test connection fail', async () => {
@@ -215,14 +232,12 @@ describe('South OPCHDA', () => {
         })
       );
     await expect(south.testConnection()).rejects.toThrow(
-      new Error(`Error occurred when sending connect command to remote agent with status 400: bad request`)
+      new Error(`Error occurred when sending connect command to remote agent with status 400. bad request`)
     );
-    expect(logger.error).toHaveBeenCalledWith(`Error occurred when sending connect command to remote agent with status 400: bad request`);
 
     await expect(south.testConnection()).rejects.toThrow(
       new Error(`Error occurred when sending connect command to remote agent with status 500`)
     );
-    expect(logger.error).toHaveBeenCalledWith(`Error occurred when sending connect command to remote agent with status 500`);
   });
 
   it('should get data from Remote agent', async () => {
@@ -257,9 +272,32 @@ describe('South OPCHDA', () => {
     expect(fetch).toHaveBeenCalledWith(`${configuration.settings.agentUrl}/api/opc/${configuration.id}/read`, {
       method: 'PUT',
       body: JSON.stringify({
+        host: configuration.settings.host,
+        serverName: configuration.settings.serverName,
+        aggregate: 'raw',
+        resampling: 'none',
         startTime,
         endTime,
-        items
+        items: [
+          { name: 'item1', nodeId: 'ns=3;s=Random' },
+          { name: 'item2', nodeId: 'ns=3;s=Counter' }
+        ]
+      }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    expect(fetch).toHaveBeenCalledWith(`${configuration.settings.agentUrl}/api/opc/${configuration.id}/read`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        host: configuration.settings.host,
+        serverName: configuration.settings.serverName,
+        aggregate: 'average',
+        resampling: '10Seconds',
+        startTime,
+        endTime,
+        items: [{ name: 'item3', nodeId: 'ns=3;s=Triangle' }]
       }),
       headers: {
         'Content-Type': 'application/json'
@@ -269,7 +307,6 @@ describe('South OPCHDA', () => {
     expect(result).toEqual('2020-03-01T00:00:00.000Z');
     expect(south.addValues).toHaveBeenCalledWith([{ timestamp: '2020-02-01T00:00:00.000Z' }, { timestamp: '2020-03-01T00:00:00.000Z' }]);
 
-    await south.historyQuery(items, startTime, endTime);
     expect(logger.debug).toHaveBeenCalledWith(`No result found. Request done in 0 ms`);
   });
 
@@ -292,8 +329,6 @@ describe('South OPCHDA', () => {
 
     await south.historyQuery(items, startTime, endTime);
     expect(logger.error).toHaveBeenCalledWith(`Error occurred when querying remote agent with status 400: bad request`);
-
-    await south.historyQuery(items, startTime, endTime);
     expect(logger.error).toHaveBeenCalledWith(`Error occurred when querying remote agent with status 500`);
   });
 });

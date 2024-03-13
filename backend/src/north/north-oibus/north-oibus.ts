@@ -11,7 +11,7 @@ import FormData from 'form-data';
 import { HandlesFile, HandlesValues } from '../north-interface';
 import { filesExists } from '../../service/utils';
 import { NorthOIBusSettings } from '../../../../shared/model/north-settings.model';
-import { createProxyAgent } from '../../service/proxy.service';
+import { createProxyAgent } from '../../service/proxy-agent';
 import { OIBusDataValue } from '../../../../shared/model/engine.model';
 
 /**
@@ -34,8 +34,6 @@ export default class NorthOibus extends NorthConnector<NorthOIBusSettings> imple
   }
 
   override async testConnection(): Promise<void> {
-    this.logger.info(`Testing connection on "${this.connector.settings.host}"`);
-
     const headers: HeadersInit = {};
     const basic = Buffer.from(
       `${this.connector.settings.username}:${await this.encryptionService.decryptText(this.connector.settings.password!)}`
@@ -62,17 +60,14 @@ export default class NorthOibus extends NorthConnector<NorthOIBusSettings> imple
       )
     };
 
+    let response;
     try {
-      const response = await fetch(requestUrl, fetchOptions);
-      if (response.ok) {
-        this.logger.info('OIConnect request successful');
-        return;
-      }
-      this.logger.error(`HTTP request failed with status code ${response.status} and message: ${response.statusText}`);
-      throw new Error(`HTTP request failed with status code ${response.status} and message: ${response.statusText}`);
+      response = await fetch(requestUrl, fetchOptions);
     } catch (error) {
-      this.logger.error(`Fetch error ${error}`);
       throw new Error(`Fetch error ${error}`);
+    }
+    if (!response.ok) {
+      throw new Error(`HTTP request failed with status code ${response.status} and message: ${response.statusText}`);
     }
   }
 
@@ -88,7 +83,7 @@ export default class NorthOibus extends NorthConnector<NorthOIBusSettings> imple
     ).toString('base64')}`;
 
     let response;
-    const valuesUrl = `${this.connector.settings.host}/api/add-values?name=${this.connector.name}`;
+    const valuesUrl = `${this.connector.settings.host}/api/add-values?name=${encodeURI(this.connector.name)}`;
     try {
       response = await fetch(valuesUrl, {
         method: 'POST',
@@ -150,7 +145,7 @@ export default class NorthOibus extends NorthConnector<NorthOIBusSettings> imple
     });
 
     let response;
-    const fileUrl = `${this.connector.settings.host}/api/add-file?name=${this.connector.name}`;
+    const fileUrl = `${this.connector.settings.host}/api/add-file?name=${encodeURI(this.connector.name)}`;
     try {
       response = await fetch(fileUrl, {
         method: 'POST',

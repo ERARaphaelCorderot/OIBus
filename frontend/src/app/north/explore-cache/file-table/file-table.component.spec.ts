@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FileTableComponent } from './file-table.component';
 import { provideI18nTesting } from '../../../../i18n/mock-i18n';
+import { provideHttpClient } from '@angular/common/http';
 
 describe('FileTableComponent', () => {
   let component: FileTableComponent;
@@ -19,22 +20,47 @@ describe('FileTableComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FileTableComponent],
-      providers: [provideI18nTesting()]
+      providers: [provideI18nTesting(), provideHttpClient()]
     }).compileComponents();
 
     fixture = TestBed.createComponent(FileTableComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges();
-
     component.files = [...testFiles];
+    component.actions = ['remove', 'retry', 'view', 'archive'];
+
+    fixture.detectChanges();
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should create actions on init', () => {
+    const actionGroups = fixture.debugElement.nativeElement.querySelectorAll('.action-buttons');
+    expect(actionGroups.length).toBe(8);
+
+    const actionButtons = actionGroups[0].querySelectorAll('button');
+    expect(actionButtons[0].querySelector('span').classList).toContain(component.actionButtonData.remove.icon);
+    expect(actionButtons[1].querySelector('span').classList).toContain(component.actionButtonData.retry.icon);
+    expect(actionButtons[2].querySelector('span').classList).toContain(component.actionButtonData.view.icon);
+    expect(actionButtons[3].querySelector('span').classList).toContain(component.actionButtonData.archive.icon);
+  });
+
+  it('should dispatch action event', () => {
+    spyOn(component.itemAction, 'emit');
+    component.onItemActionClick('remove', component.files[0]);
+    expect(component.itemAction.emit).toHaveBeenCalledWith({ type: 'remove', file: component.files[0] });
+  });
+
+  it('should handle passsing duplicate actions', () => {
+    const temp = TestBed.createComponent(FileTableComponent);
+    temp.componentInstance.actions = ['remove', 'remove', 'remove', 'retry', 'view', 'archive'];
+    temp.detectChanges();
+    expect(temp.componentInstance.actions.length).toBe(4);
+  });
+
   it('should be sorted by modification date by deafault', () => {
-    const dates = testFiles.map(file => new Date(file.modificationDate));
+    const dates = component.files.map(file => new Date(file.modificationDate));
     const isDescendingSorted = dates.every((val, i, arr) => !i || val <= arr[i - 1]);
     expect(isDescendingSorted).toBe(true);
   });
@@ -49,13 +75,13 @@ describe('FileTableComponent', () => {
   });
 
   it('should correctly check files', () => {
-    component.onFileCheckboxClick(true, testFiles[0]);
-    component.onFileCheckboxClick(true, testFiles[1]);
-    component.onFileCheckboxClick(true, testFiles[2]);
+    component.onFileCheckboxClick(true, component.files[0]);
+    component.onFileCheckboxClick(true, component.files[1]);
+    component.onFileCheckboxClick(true, component.files[2]);
     let checkedBoxes = [...component.checkboxByFiles.values()];
     expect(checkedBoxes.filter(checked => checked).length).toBe(3);
 
-    component.onFileCheckboxClick(false, testFiles[0]);
+    component.onFileCheckboxClick(false, component.files[0]);
     checkedBoxes = [...component.checkboxByFiles.values()];
     expect(checkedBoxes.filter(checked => checked).length).toBe(2);
   });
@@ -75,7 +101,7 @@ describe('FileTableComponent', () => {
     expect(component.files).toEqual(newFiles);
 
     // Default ordering is kept
-    const dates = newFiles.map(file => new Date(file.modificationDate));
+    const dates = component.files.map(file => new Date(file.modificationDate));
     const isDescendingSorted = dates.every((val, i, arr) => !i || val <= arr[i - 1]);
     expect(isDescendingSorted).toBe(true);
 

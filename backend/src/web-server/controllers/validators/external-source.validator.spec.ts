@@ -1,5 +1,5 @@
 import JoiValidator from './joi.validator';
-import { externalSourceSchema } from '../../../engine/oibus-validation-schema';
+import { externalSourceSchema } from './oibus-validation-schema';
 
 interface DataProvider {
   dto: any;
@@ -58,7 +58,7 @@ describe('External source validator', () => {
     if (dataProvider.isValid) {
       await expect(validator.validate(externalSourceSchema, dataProvider.dto)).resolves.not.toThrow();
     } else {
-      await expect(validator.validate(externalSourceSchema, dataProvider.dto)).rejects.toThrowError(
+      await expect(validator.validate(externalSourceSchema, dataProvider.dto)).rejects.toThrow(
         new Error(dataProvider.errorMessage as string)
       );
     }

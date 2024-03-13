@@ -10,7 +10,10 @@
   <ng-template oibBoxTitle>
     <div class="d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
-        <span translate="south.items.title"></span>
+        <div>
+          <span translate="south.items.title"></span>
+          <span class="mx-1" *ngIf="this.filteredItems.length">({{this.filteredItems.length}})</span>
+        </div>
         <input
           class="ms-4 form form-control oib-box-input-header"
           [formControl]="searchControl"
@@ -47,6 +50,7 @@
           [disabled]="this.allItems.length === 0"
           translate="south.items.delete-all"
         ></button>
+        <oib-help url="https://oibus.optimistik.com/docs/guide/south-connectors/common-settings#item-section"></oib-help>
       </div>
     </div>
   </ng-template>
@@ -57,10 +61,10 @@
       <table class="table table-sm table-hover oib-table">
         <thead class="light">
           <tr>
-            <th *ngIf="!inMemory" style="width: 3%"></th>
+            <th *ngIf="!inMemory"></th>
             <th translate="history-query.items.name"></th>
             <th *ngFor="let setting of displaySettings">{{ setting.label }}</th>
-            <th style="width: 3%"></th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -92,6 +96,11 @@
         </tbody>
       </table>
     </ng-container>
+    <div class="d-flex flex-row-reverse" *ngIf="displayedItems.totalElements">
+      <div [class]="displayedItems.totalPages > 1 ? 'ms-2' : ''">
+        <oib-pagination [page]="displayedItems" (pageChanged)="changePage($event)"></oib-pagination>
+      </div>
+    </div>
     <ng-template #empty>
       <div class="oib-grey-container" translate="south.items.none-match" *ngIf="allItems.length !== 0"></div>
       <div class="oib-grey-container" translate="south.items.none" *ngIf="allItems.length === 0"></div>

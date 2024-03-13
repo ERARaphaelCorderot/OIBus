@@ -14,9 +14,10 @@ import ArchiveServiceMock from '../tests/__mocks__/archive-service.mock';
 import { EventEmitter } from 'node:events';
 import { HandlesFile, HandlesValues } from './north-interface';
 import fs from 'node:fs/promises';
-import { dirSize } from '../service/utils';
+import { dirSize, validateCronExpression } from '../service/utils';
 import { ScanModeDTO } from '../../../shared/model/scan-mode.model';
 import { OIBusDataValue } from '../../../shared/model/engine.model';
+import path from 'node:path';
 
 // Mock fs
 jest.mock('node:fs/promises');
@@ -25,12 +26,23 @@ jest.mock('node:path');
 const getValuesToSendMock = jest.fn();
 const getFileToSend = jest.fn();
 const valueCacheIsEmpty = jest.fn();
+const getQueuedFilesMetadata = jest.fn();
+const removeSentValues = jest.fn();
+const removeAllValues = jest.fn();
 const fileCacheIsEmpty = jest.fn();
 const removeAllErrorFiles = jest.fn();
 const removeAllCacheFiles = jest.fn();
+const getErrorValueFiles = jest.fn();
+const removeErrorValues = jest.fn();
+const removeAllErrorValues = jest.fn();
+const retryErrorValues = jest.fn();
+const retryAllErrorValues = jest.fn();
 const valueTrigger = new EventEmitter();
 const fileTrigger = new EventEmitter();
 const archiveTrigger = new EventEmitter();
+const getErrorFileContent = jest.fn();
+const getCacheFileContent = jest.fn();
+const getArchiveFileContent = jest.fn();
 
 // Mock services
 jest.mock('../service/repository.service');
@@ -44,6 +56,14 @@ jest.mock(
       valueCacheServiceMock.getValuesToSend = getValuesToSendMock;
       valueCacheServiceMock.isEmpty = valueCacheIsEmpty;
       valueCacheServiceMock.triggerRun = valueTrigger;
+      valueCacheServiceMock.getQueuedFilesMetadata = getQueuedFilesMetadata;
+      valueCacheServiceMock.removeSentValues = removeSentValues;
+      valueCacheServiceMock.removeAllValues = removeAllValues;
+      valueCacheServiceMock.getErrorValueFiles = getErrorValueFiles;
+      valueCacheServiceMock.removeErrorValues = removeErrorValues;
+      valueCacheServiceMock.removeAllErrorValues = removeAllErrorValues;
+      valueCacheServiceMock.retryErrorValues = retryErrorValues;
+      valueCacheServiceMock.retryAllErrorValues = retryAllErrorValues;
       return valueCacheServiceMock;
     }
 );
@@ -58,6 +78,8 @@ jest.mock(
       fileCacheServiceMock.getFileToSend = getFileToSend;
       fileCacheServiceMock.isEmpty = fileCacheIsEmpty;
       fileCacheServiceMock.triggerRun = fileTrigger;
+      fileCacheServiceMock.getErrorFileContent = getErrorFileContent;
+      fileCacheServiceMock.getCacheFileContent = getCacheFileContent;
       return fileCacheServiceMock;
     }
 );
@@ -67,6 +89,7 @@ jest.mock(
     function () {
       const archiveServiceMock = new ArchiveServiceMock();
       archiveServiceMock.triggerRun = archiveTrigger;
+      archiveServiceMock.getArchiveFileContent = getArchiveFileContent;
       return archiveServiceMock;
     }
 );
@@ -187,6 +210,25 @@ describe('NorthConnector enabled', () => {
     expect(logger.debug).toHaveBeenCalledWith(`Removing existing North cron job associated to scan mode "name" (* * * * *)`);
 
     await north.stop();
+  });
+
+  it('should not create a cron job when the cron expression is invalid', () => {
+    const scanMode = {
+      id: 'id1',
+      name: 'my scan mode',
+      description: 'my description',
+      cron: '* * * * * *L'
+    };
+    const error = new Error('Invalid cron expression');
+    (validateCronExpression as jest.Mock).mockImplementationOnce(() => {
+      throw error;
+    });
+
+    north.createCronJob(scanMode);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      `Error when creating North cron job for scan mode "${scanMode.name}" (${scanMode.cron}): ${error.message}`
+    );
   });
 
   it('should properly add to queue a new task and trigger next run', async () => {
@@ -481,6 +523,7 @@ describe('NorthConnector enabled', () => {
       });
 
     (fs.stat as jest.Mock).mockReturnValue({ size: 123 });
+    (path.parse as jest.Mock).mockImplementation(filePath => ({ base: filePath }));
 
     await north.handleFilesWrapper();
     expect(logger.error).not.toHaveBeenCalled();
@@ -490,6 +533,80 @@ describe('NorthConnector enabled', () => {
     expect(logger.error).toHaveBeenCalledWith(`Error while handling file "file.csv" (2). oibus error`);
     await north.handleFilesWrapper();
     expect(logger.error).toHaveBeenCalledWith(`Error while handling file "file.csv" (3). oibus error 2`);
+  });
+
+  it('should get cache values', async () => {
+    north.getCacheValues('');
+    expect(getQueuedFilesMetadata).toHaveBeenCalledWith('');
+
+    north.getCacheValues('file');
+    expect(getQueuedFilesMetadata).toHaveBeenCalledWith('file');
+  });
+
+  it('should remove all cache values', async () => {
+    await north.removeAllCacheValues();
+    expect(removeAllValues).toHaveBeenCalled();
+  });
+
+  it('should remove cache values by filename', async () => {
+    const filenames = ['file1.queue.tmp', 'file2.queue.tmp'];
+    path.join = jest.fn().mockImplementation((...args) => args.join('/'));
+
+    await north.removeCacheValues(filenames);
+
+    expect(removeSentValues).toHaveBeenCalledWith(
+      new Map([
+        ['valueFolder/file1.queue.tmp', []],
+        ['valueFolder/file2.queue.tmp', []]
+      ])
+    );
+  });
+
+  it('should get cache values errors', async () => {
+    north.getValueErrors('', '', '');
+    expect(getErrorValueFiles).toHaveBeenCalledWith('', '', '');
+
+    north.getValueErrors('', '', 'file');
+    expect(getErrorValueFiles).toHaveBeenCalledWith('', '', 'file');
+  });
+
+  it('should remove cache value errors', async () => {
+    await north.removeValueErrors(['file1.queue.tmp', 'file2.queue.tmp']);
+    expect(removeErrorValues).toHaveBeenCalledWith(['file1.queue.tmp', 'file2.queue.tmp']);
+    expect(logger.trace).toHaveBeenCalledWith(`Removing 2 value error files from North connector "${configuration.name}"...`);
+  });
+
+  it('should remove all cache value errors', async () => {
+    await north.removeAllValueErrors();
+    expect(removeAllErrorValues).toHaveBeenCalled();
+    expect(logger.trace).toHaveBeenCalledWith(`Removing all value error files from North connector "${configuration.name}"...`);
+  });
+
+  it('should retry cache value errors', async () => {
+    await north.retryValueErrors(['file1.queue.tmp', 'file2.queue.tmp']);
+    expect(retryErrorValues).toHaveBeenCalledWith(['file1.queue.tmp', 'file2.queue.tmp']);
+    expect(logger.trace).toHaveBeenCalledWith(`Retrying 2 value error files in North connector "${configuration.name}"...`);
+  });
+
+  it('should retry all cache value errors', async () => {
+    await north.retryAllValueErrors();
+    expect(retryAllErrorValues).toHaveBeenCalled();
+    expect(logger.trace).toHaveBeenCalledWith(`Retrying all value error files in North connector "${configuration.name}"...`);
+  });
+
+  it('should get error file content', async () => {
+    await north.getErrorFileContent('file1.queue.tmp');
+    expect(getErrorFileContent).toHaveBeenCalledWith('file1.queue.tmp');
+  });
+
+  it('should get cache file content', async () => {
+    await north.getCacheFileContent('file1.queue.tmp');
+    expect(getCacheFileContent).toHaveBeenCalledWith('file1.queue.tmp');
+  });
+
+  it('should get archive file content', async () => {
+    await north.getArchiveFileContent('file1.queue.tmp');
+    expect(getArchiveFileContent).toHaveBeenCalledWith('file1.queue.tmp');
   });
 });
 

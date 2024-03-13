@@ -93,7 +93,8 @@ describe('NorthDetailComponent', () => {
     architecture: 'x64',
     hostname: 'hostname',
     binaryDirectory: 'bin-directory',
-    operatingSystem: 'Windows'
+    operatingSystem: 'Windows',
+    platform: 'windows'
   };
 
   beforeEach(() => {
@@ -122,7 +123,7 @@ describe('NorthDetailComponent', () => {
       ]
     });
 
-    northConnectorService.getNorthConnector.and.returnValue(of(northConnector));
+    northConnectorService.get.and.returnValue(of(northConnector));
     northConnectorService.getNorthConnectorTypeManifest.and.returnValue(of(manifest));
     northConnectorService.startNorth.and.returnValue(of(undefined));
     northConnectorService.stopNorth.and.returnValue(of(undefined));
@@ -151,7 +152,7 @@ describe('NorthDetailComponent', () => {
   });
 
   it('should start north', () => {
-    northConnectorService.getNorthConnector.and.returnValue(of({ ...northConnector, enabled: false }));
+    northConnectorService.get.and.returnValue(of({ ...northConnector, enabled: false }));
     tester.detectChanges();
     tester.toggleButton.click();
     expect(northConnectorService.startNorth).toHaveBeenCalledWith(northConnector.id);

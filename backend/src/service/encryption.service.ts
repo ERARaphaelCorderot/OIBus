@@ -3,13 +3,14 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import selfSigned from 'selfsigned';
+import selfSigned, { GenerateResult } from 'selfsigned';
 
 import { createFolder, filesExists } from './utils';
 import { OibFormControl } from '../../../shared/model/form.model';
 import { CryptoSettings } from '../../../shared/model/engine.model';
 import { SouthSettings } from '../../../shared/model/south-settings.model';
 import { NorthSettings } from '../../../shared/model/north-settings.model';
+import { CertificateOptions } from '../../../shared/model/certificate.model';
 
 export const CERT_FOLDER = 'certs';
 export const CERT_PRIVATE_KEY_FILE_NAME = 'private.pem';
@@ -77,57 +78,69 @@ export default class EncryptionService {
       !(await filesExists(this.getPrivateKeyPath())) ||
       !(await filesExists(this.getPublicKeyPath()))
     ) {
-      const certificate = selfSigned.generate(
-        [
-          { name: 'commonName', value: 'OIBus' },
-          { name: 'countryName', value: 'FR' },
-          { name: 'stateOrProvinceName', value: 'Savoie' },
-          { name: 'localityName', value: 'Chambery' },
-          { name: 'organizationName', value: 'Optimistik' }
-        ],
-        {
-          keySize: 4096,
-          days: 36500,
-          algorithm: 'sha256',
-          pkcs7: true,
-          extensions: [
-            {
-              name: 'basicConstraints',
-              cA: false
-            },
-            {
-              name: 'keyUsage',
-              keyCertSign: true,
-              digitalSignature: true,
-              nonRepudiation: true,
-              keyEncipherment: true,
-              dataEncipherment: true
-            },
-            {
-              name: 'extKeyUsage',
-              clientAuth: true,
-              serverAuth: true
-            },
-            {
-              name: 'subjectAltName',
-              altNames: [
-                {
-                  type: 6, // URI
-                  value: `urn:${os.hostname()}:OIBus`
-                },
-                {
-                  type: 2, // DNS
-                  value: os.hostname()
-                }
-              ]
-            }
-          ]
-        }
-      );
+      const certificate = this.generateSelfSignedCertificate({
+        commonName: 'OIBus',
+        countryName: 'FR',
+        stateOrProvinceName: 'Savoie',
+        localityName: 'Chambery',
+        organizationName: 'Optimistik',
+        keySize: 4096,
+        daysBeforeExpiry: 36500
+      });
       await fs.writeFile(this.getPrivateKeyPath(), certificate.private);
       await fs.writeFile(this.getPublicKeyPath(), certificate.public);
       await fs.writeFile(this.getCertPath(), certificate.cert);
     }
+  }
+
+  generateSelfSignedCertificate(options: CertificateOptions): GenerateResult {
+    return selfSigned.generate(
+      [
+        { name: 'commonName', value: options.commonName },
+        { name: 'countryName', value: options.countryName },
+        { name: 'stateOrProvinceName', value: options.stateOrProvinceName },
+        { name: 'localityName', value: options.localityName },
+        { name: 'organizationName', value: options.organizationName }
+      ],
+      {
+        keySize: options.keySize,
+        days: options.daysBeforeExpiry,
+        algorithm: 'sha256',
+        pkcs7: true,
+        extensions: [
+          {
+            name: 'basicConstraints',
+            cA: false
+          },
+          {
+            name: 'keyUsage',
+            keyCertSign: true,
+            digitalSignature: true,
+            nonRepudiation: true,
+            keyEncipherment: true,
+            dataEncipherment: true
+          },
+          {
+            name: 'extKeyUsage',
+            clientAuth: true,
+            serverAuth: true
+          },
+          {
+            name: 'subjectAltName',
+            altNames: [
+              {
+                type: 6, // URI
+                value: `urn:${os.hostname()}:OIBus`
+              },
+              {
+                type: 2, // DNS
+                value: os.hostname()
+              }
+            ]
+          }
+        ]
+      }
+    );
   }
 
   async encryptConnectorSecrets(
@@ -143,7 +156,7 @@ export default class EncryptionService {
         } else {
           encryptedSettings[fieldSettings.key] = oldSettings ? oldSettings[fieldSettings.key] || '' : '';
         }
-      } else if (fieldSettings.type === 'OibArray') {
+      } else if (fieldSettings.type === 'OibArray' && encryptedSettings[fieldSettings.key]) {
         for (let i = 0; i < encryptedSettings[fieldSettings.key].length; i++) {
           encryptedSettings[fieldSettings.key][i] = await this.encryptConnectorSecrets(
             encryptedSettings[fieldSettings.key][i],
@@ -151,7 +164,7 @@ export default class EncryptionService {
             fieldSettings.content
           );
         }
-      } else if (fieldSettings.type === 'OibFormGroup') {
+      } else if (fieldSettings.type === 'OibFormGroup' && encryptedSettings[fieldSettings.key]) {
         encryptedSettings[fieldSettings.key] = await this.encryptConnectorSecrets(
           encryptedSettings[fieldSettings.key],
           oldSettings ? oldSettings[fieldSettings.key] || null : null,
@@ -166,11 +179,11 @@ export default class EncryptionService {
     for (const fieldSettings of formSettings) {
       if (fieldSettings.type === 'OibSecret') {
         connectorSettings[fieldSettings.key] = '';
-      } else if (fieldSettings.type === 'OibArray') {
+      } else if (fieldSettings.type === 'OibArray' && connectorSettings[fieldSettings.key]) {
         for (let i = 0; i < connectorSettings[fieldSettings.key].length; i++) {
           connectorSettings[fieldSettings.key][i] = this.filterSecrets(connectorSettings[fieldSettings.key][i], fieldSettings.content);
         }
-      } else if (fieldSettings.type === 'OibFormGroup') {
+      } else if (fieldSettings.type === 'OibFormGroup' && connectorSettings[fieldSettings.key]) {
         this.filterSecrets(connectorSettings[fieldSettings.key], fieldSettings.content);
       }
     }

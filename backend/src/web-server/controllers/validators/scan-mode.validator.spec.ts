@@ -1,5 +1,5 @@
 import JoiValidator from './joi.validator';
-import { scanModeSchema } from '../../../engine/oibus-validation-schema';
+import { scanModeSchema } from './oibus-validation-schema';
 
 interface DataProvider {
   dto: any;
@@ -41,7 +41,7 @@ const dataProviders: DataProvider[] = [
       name: 'valid',
       description: 'valid',
       description1: 'valid',
-      cron: 'valid'
+      cron: '* * * * * *'
     },
     isValid: false,
     errorMessage: '"description1" is not allowed'
@@ -50,10 +50,19 @@ const dataProviders: DataProvider[] = [
     dto: {
       name: 'valid',
       description: 'valid',
-      cron: 'valid'
+      cron: '* * * * * *'
     },
     isValid: true,
     errorMessage: null
+  },
+  {
+    dto: {
+      name: 'valid',
+      description: 'valid',
+      cron: '* * * * * *L'
+    },
+    isValid: false,
+    errorMessage: 'Expression contains non-standard characters: L'
   }
 ];
 
@@ -64,9 +73,7 @@ describe('Scan mode validator', () => {
     if (dataProvider.isValid) {
       await expect(validator.validate(scanModeSchema, dataProvider.dto)).resolves.not.toThrow();
     } else {
-      await expect(validator.validate(scanModeSchema, dataProvider.dto)).rejects.toThrowError(
-        new Error(dataProvider.errorMessage as string)
-      );
+      await expect(validator.validate(scanModeSchema, dataProvider.dto)).rejects.toThrow(new Error(dataProvider.errorMessage as string));
     }
   });
 });

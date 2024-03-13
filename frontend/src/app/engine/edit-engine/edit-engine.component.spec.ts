@@ -5,7 +5,7 @@ import { ComponentTester, createMock } from 'ngx-speculoos';
 import { provideI18nTesting } from '../../../i18n/mock-i18n';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
-import { EngineSettingsCommandDTO, EngineSettingsDTO } from '../../../../../shared/model/engine.model';
+import { EngineSettingsDTO } from '../../../../../shared/model/engine.model';
 import { EngineService } from '../../services/engine.service';
 import { of } from 'rxjs';
 import { NotificationService } from '../../shared/notification.service';
@@ -25,6 +25,14 @@ class EditEngineComponentTester extends ComponentTester<EditEngineComponent> {
 
   get port() {
     return this.input('#port')!;
+  }
+
+  get proxyEnabled() {
+    return this.input('#proxy-enabled')!;
+  }
+
+  get proxyPort() {
+    return this.input('#proxy-port')!;
   }
 
   get consoleLevel() {
@@ -79,6 +87,10 @@ class EditEngineComponentTester extends ComponentTester<EditEngineComponent> {
     return this.input('#loki-password');
   }
 
+  get oiaLevel() {
+    return this.select('#oia-level')!;
+  }
+
   get submitButton() {
     return this.button('#save-button')!;
   }
@@ -93,6 +105,8 @@ describe('EditEngineComponent', () => {
     id: 'id',
     name: 'OIBus Test',
     port: 2223,
+    proxyEnabled: true,
+    proxyPort: 9000,
     logParameters: {
       console: {
         level: 'silent'
@@ -113,6 +127,9 @@ describe('EditEngineComponent', () => {
         tokenAddress: 'http://token-address.oibus.com',
         username: 'oibus',
         password: 'pass'
+      },
+      oia: {
+        level: 'silent'
       }
     }
   };
@@ -143,6 +160,8 @@ describe('EditEngineComponent', () => {
     expect(tester.title).toContainText('Edit engine settings');
     expect(tester.name).toHaveValue(engineSettings.name);
     expect(tester.port).toHaveValue(engineSettings.port.toString());
+    expect(tester.proxyPort).toHaveValue(engineSettings.proxyPort.toString());
+    expect(tester.proxyEnabled).toBeChecked();
     expect(tester.consoleLevel).toHaveSelectedLabel('Silent');
     expect(tester.fileLevel).toHaveSelectedLabel('Trace');
     expect(tester.fileMaxFileSize).toHaveValue(engineSettings.logParameters.file.maxFileSize.toString());
@@ -156,32 +175,33 @@ describe('EditEngineComponent', () => {
     expect(tester.lokiAddress).toHaveValue(engineSettings.logParameters.loki.address);
     expect(tester.lokiUsername).toHaveValue(engineSettings.logParameters.loki.username);
     expect(tester.lokiPassword).toHaveValue(engineSettings.logParameters.loki.password);
+    expect(tester.oiaLevel).toHaveSelectedLabel('Silent');
   });
 
   it('should update engine settings', () => {
     tester.name.fillWith('OIBus Dev');
 
+    tester.proxyPort.fillWith('8000');
+    tester.proxyEnabled.uncheck();
+
     tester.consoleLevel.selectLabel('Error');
     tester.fileNumberOfFiles!.fillWith('10');
     tester.lokiLevel.selectLabel('Silent');
+    tester.oiaLevel.selectLabel('Error');
 
     expect(tester.name).toHaveValue('OIBus Dev');
     expect(tester.consoleLevel).toHaveSelectedLabel('Error');
     expect(tester.fileNumberOfFiles).toHaveValue('10');
     expect(tester.lokiLevel).toHaveSelectedLabel('Silent');
+    expect(tester.oiaLevel).toHaveSelectedLabel('Error');
 
     tester.submitButton.click();
-
-    const expectedSettings: EngineSettingsCommandDTO = JSON.parse(JSON.stringify(engineSettings));
-
-    expectedSettings.name = 'OIBus Dev';
-    expectedSettings.logParameters.console.level = 'error';
-    expectedSettings.logParameters.file.numberOfFiles = 10;
-    expectedSettings.logParameters.loki.level = 'silent';
 
     expect(engineService.updateEngineSettings).toHaveBeenCalledWith({
       name: 'OIBus Dev',
       port: 2223,
+      proxyEnabled: false,
+      proxyPort: 8000,
       logParameters: {
         console: {
           level: 'error'
@@ -202,6 +222,9 @@ describe('EditEngineComponent', () => {
           tokenAddress: 'http://token-address.oibus.com',
           username: 'oibus',
           password: 'pass'
+        },
+        oia: {
+          level: 'error'
         }
       }
     });

@@ -21,31 +21,133 @@ import {
   generateRandomId,
   generateReplacementParameters,
   getCommandLineArguments,
+  getNetworkSettingsFromRegistration,
   getOIBusInfo,
+  getPlatformFromOsType,
   httpGetWithBody,
   logQuery,
-  persistResults
+  persistResults,
+  unzip,
+  downloadFile,
+  getFilesFiltered,
+  validateCronExpression
 } from './utils';
 import csv from 'papaparse';
 import pino from 'pino';
+import AdmZip from 'adm-zip';
+import fetch from 'node-fetch';
 import PinoLogger from '../tests/__mocks__/logger.mock';
 import { DateTimeType } from '../../../shared/model/types';
 import Stream from 'node:stream';
 import http from 'node:http';
 import https from 'node:https';
 import os from 'node:os';
+import { RegistrationSettingsDTO } from '../../../shared/model/engine.model';
+import { createProxyAgent } from './proxy-agent';
+import EncryptionService from './encryption.service';
+import EncryptionServiceMock from '../tests/__mocks__/encryption-service.mock';
+import cronstrue from 'cronstrue';
 
 jest.mock('node:zlib');
 jest.mock('node:fs/promises');
 jest.mock('node:fs');
 jest.mock('minimist');
 jest.mock('papaparse');
+jest.mock('adm-zip');
+jest.mock('node-fetch');
+const { Response } = jest.requireActual('node-fetch');
 jest.mock('node:http', () => ({ request: jest.fn() }));
 jest.mock('node:https', () => ({ request: jest.fn() }));
+jest.mock('./proxy-agent');
 
 const nowDateString = '2020-02-02T02:02:02.222Z';
-
 describe('Service utils', () => {
+  describe('getNetworkSettings', () => {
+    const encryptionService: EncryptionService = new EncryptionServiceMock('', '');
+
+    it('should get network settings and throw error if not registered', async () => {
+      await expect(
+        getNetworkSettingsFromRegistration(
+          {
+            status: 'PENDING'
+          } as RegistrationSettingsDTO,
+          '/api/oianalytics/oibus-commands/${oibusId}/check',
+          encryptionService
+        )
+      ).rejects.toThrow('OIBus not registered in OIAnalytics');
+    });
+
+    it('should get network settings', async () => {
+      const settings: RegistrationSettingsDTO = {
+        status: 'REGISTERED',
+        host: 'http://localhost:4200/',
+        token: 'my token',
+        useProxy: false,
+        acceptUnauthorized: false
+      } as RegistrationSettingsDTO;
+
+      const result = await getNetworkSettingsFromRegistration(settings, '/endpoint', encryptionService);
+      expect(result).toEqual({
+        host: 'http://localhost:4200',
+        headers: { authorization: 'Bearer my token' },
+        agent: undefined
+      });
+      expect(createProxyAgent).toHaveBeenCalledWith(false, 'http://localhost:4200/endpoint', null, false);
+    });
+
+    it('should get network settings and proxy', async () => {
+      const settings: RegistrationSettingsDTO = {
+        status: 'REGISTERED',
+        host: 'http://localhost:4200/',
+        token: 'my token',
+        useProxy: true,
+        proxyUrl: 'https://proxy.url',
+        proxyUsername: 'user',
+        proxyPassword: 'pass',
+        acceptUnauthorized: false
+      } as RegistrationSettingsDTO;
+
+      const result = await getNetworkSettingsFromRegistration(settings, '/endpoint', encryptionService);
+      expect(result).toEqual({
+        host: 'http://localhost:4200',
+        headers: { authorization: 'Bearer my token' },
+        agent: undefined
+      });
+      expect(createProxyAgent).toHaveBeenCalledWith(
+        true,
+        'http://localhost:4200/endpoint',
+        { url: 'https://proxy.url', username: 'user', password: 'pass' },
+        false
+      );
+    });
+
+    it('should get network settings and proxy without pass', async () => {
+      const settings: RegistrationSettingsDTO = {
+        status: 'REGISTERED',
+        host: 'http://localhost:4200/',
+        token: 'my token',
+        useProxy: true,
+        proxyUrl: 'https://proxy.url',
+        proxyUsername: 'user',
+        proxyPassword: '',
+        acceptUnauthorized: false
+      } as RegistrationSettingsDTO;
+
+      const result = await getNetworkSettingsFromRegistration(settings, '/endpoint', encryptionService);
+      expect(result).toEqual({
+        host: 'http://localhost:4200',
+        headers: { authorization: 'Bearer my token' },
+        agent: undefined
+      });
+      expect(createProxyAgent).toHaveBeenCalledWith(
+        true,
+        'http://localhost:4200/endpoint',
+        { url: 'https://proxy.url', username: 'user', password: null },
+        false
+      );
+    });
+  });
+
   describe('getCommandLineArguments', () => {
     beforeEach(() => {
       jest.clearAllMocks();
@@ -173,10 +275,10 @@ describe('Service utils', () => {
       (zlib.createGzip as jest.Mock).mockReturnValue({});
       await compress('myInputFile', 'myOutputFile');
 
-      expect(fsSync.createReadStream).toBeCalledTimes(1);
+      expect(fsSync.createReadStream).toHaveBeenCalledTimes(1);
       expect(fsSync.createReadStream).toHaveBeenCalledWith('myInputFile');
-      expect(myReadStream.pipe).toBeCalledTimes(2);
-      expect(fsSync.createWriteStream).toBeCalledTimes(1);
+      expect(myReadStream.pipe).toHaveBeenCalledTimes(2);
+      expect(fsSync.createWriteStream).toHaveBeenCalledTimes(1);
       expect(fsSync.createWriteStream).toHaveBeenCalledWith('myOutputFile');
     });
 
@@ -207,11 +309,41 @@ describe('Service utils', () => {
         expectedError = error;
       }
       expect(expectedError).toEqual('compression error');
-      expect(fsSync.createReadStream).toBeCalledTimes(1);
+      expect(fsSync.createReadStream).toHaveBeenCalledTimes(1);
       expect(fsSync.createReadStream).toHaveBeenCalledWith('myInputFile');
-      expect(myReadStream.pipe).toBeCalledTimes(2);
-      expect(fsSync.createWriteStream).toBeCalledTimes(1);
+      expect(myReadStream.pipe).toHaveBeenCalledTimes(2);
+      expect(fsSync.createWriteStream).toHaveBeenCalledTimes(1);
       expect(fsSync.createWriteStream).toHaveBeenCalledWith('myOutputFile');
+    });
+  });
+
+  describe('unzip', () => {
+    it('should properly unzip file', async () => {
+      const extractAllToAsync = jest.fn().mockImplementation((output, overwrite, keepOriginal, callback) => {
+        callback();
+      });
+      (AdmZip as jest.Mock).mockImplementation(() => ({ extractAllToAsync }));
+
+      await unzip('myInputFile', 'myOutputFolder');
+
+      expect(extractAllToAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it('should properly manage unzip errors', async () => {
+      const extractAllToAsync = jest.fn().mockImplementation((output, overwrite, keepOriginal, callback) => {
+        callback('unzip error');
+      });
+      (AdmZip as jest.Mock).mockImplementation(() => ({ extractAllToAsync }));
+
+      let expectedError = null;
+      try {
+        await unzip('myInputFile', 'myOutputFolder');
+      } catch (error) {
+        expectedError = error;
+      }
+
+      expect(expectedError).toEqual('unzip error');
+      expect(extractAllToAsync).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -901,7 +1033,7 @@ describe('Service utils', () => {
           end: jest.fn()
         };
       });
-      await expect(httpGetWithBody('body', { protocol: 'https:' })).rejects.toThrowError('an error');
+      await expect(httpGetWithBody('body', { protocol: 'https:' })).rejects.toThrow('an error');
     });
 
     it('should throw an error when parsing received data', async () => {
@@ -918,7 +1050,80 @@ describe('Service utils', () => {
           end: jest.fn()
         };
       });
-      await expect(httpGetWithBody('body', { protocol: 'https:' })).rejects.toThrowError('Unexpected token s in JSON at position 0');
+      await expect(httpGetWithBody('body', { protocol: 'https:' })).rejects.toThrow('Unexpected token s in JSON at position 0');
+    });
+  });
+
+  describe('downloadFile', () => {
+    const connectionSettings = {
+      host: 'http://localhost:4200',
+      agent: undefined,
+      headers: { authorization: `Bearer token` }
+    };
+
+    beforeEach(() => {
+      jest.resetAllMocks();
+    });
+
+    it('should download file', async () => {
+      const filePath = 'oibus.zip';
+      const timeout = 1000;
+
+      const response = new Response('content');
+      (fetch as unknown as jest.Mock).mockReturnValueOnce(Promise.resolve(response));
+
+      await downloadFile(connectionSettings, '/endpoint', filePath, timeout);
+
+      expect(fetch).toHaveBeenCalledWith(`${connectionSettings.host}/endpoint`, {
+        method: 'GET',
+        timeout,
+        headers: connectionSettings.headers,
+        agent: connectionSettings.agent
+      });
+      expect(fs.writeFile).toHaveBeenCalledWith(filePath, Buffer.from('content'));
+    });
+
+    it('should handle fetch error during download', async () => {
+      const filePath = 'oibus.zip';
+      const timeout = 1000;
+
+      (fetch as unknown as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('error');
+      });
+
+      try {
+        await downloadFile(connectionSettings, '/endpoint', filePath, timeout);
+      } catch (error) {
+        expect(error).toEqual(new Error('Download failed: Error: error'));
+      }
+      expect(fetch).toHaveBeenCalledWith(`${connectionSettings.host}/endpoint`, {
+        method: 'GET',
+        timeout,
+        headers: connectionSettings.headers,
+        agent: connectionSettings.agent
+      });
+      expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('should handle invalid fetch response during download', async () => {
+      const filePath = 'oibus.zip';
+      const timeout = 1000;
+      (fetch as unknown as jest.Mock).mockReturnValueOnce(
+        Promise.resolve(new Response('invalid', { status: 404, statusText: 'Not Found' }))
+      );
+
+      try {
+        await downloadFile(connectionSettings, '/endpoint', filePath, timeout);
+      } catch (error) {
+        expect(error).toEqual(new Error('Download failed with status code 404 and message: Not Found'));
+      }
+      expect(fetch).toHaveBeenCalledWith(`${connectionSettings.host}/endpoint`, {
+        method: 'GET',
+        timeout,
+        headers: connectionSettings.headers,
+        agent: connectionSettings.agent
+      });
+      expect(fs.writeFile).not.toHaveBeenCalled();
     });
   });
 
@@ -930,9 +1135,136 @@ describe('Service utils', () => {
       hostname: os.hostname(),
       operatingSystem: `${os.type()} ${os.release()}`,
       processId: process.pid.toString(),
-      version: version
+      version: version,
+      platform: getPlatformFromOsType(os.type())
     };
     const result = getOIBusInfo();
     expect(result).toEqual(expectedResult);
+  });
+
+  it('should return proper platform from OS type', async () => {
+    expect(getPlatformFromOsType('Linux')).toEqual('linux');
+    expect(getPlatformFromOsType('Darwin')).toEqual('macos');
+    expect(getPlatformFromOsType('Windows_NT')).toEqual('windows');
+    expect(getPlatformFromOsType('unknown')).toEqual('unknown');
+  });
+
+  describe('getFilesFiltered', () => {
+    const logger: pino.Logger = new PinoLogger();
+
+    beforeEach(() => {
+      jest.resetAllMocks();
+      jest.useFakeTimers().setSystemTime(new Date(nowDateString));
+    });
+
+    it('should properly get files', async () => {
+      (fs.readdir as jest.Mock).mockImplementation(() => ['file1', 'file2', 'file3', 'anotherFile', 'errorFile']);
+      (fs.stat as jest.Mock)
+        .mockImplementationOnce(() => ({ mtimeMs: DateTime.fromISO('2020-02-02T04:02:02.222Z').toMillis() }))
+        .mockImplementationOnce(() => ({ mtimeMs: DateTime.fromISO('2020-02-02T06:02:02.222Z').toMillis() }))
+        .mockImplementationOnce(() => ({ mtimeMs: DateTime.fromISO('2020-02-04T02:02:02.222Z').toMillis() }))
+        .mockImplementationOnce(() => ({ mtimeMs: DateTime.fromISO('2020-02-05T02:02:02.222Z').toMillis() }))
+        .mockImplementationOnce(() => {
+          throw new Error('error file');
+        });
+
+      const files = await getFilesFiltered('errorFolder', '2020-02-02T02:02:02.222Z', '2020-02-03T02:02:02.222Z', 'file', logger);
+
+      expect(files).toEqual([
+        { filename: 'file1', modificationDate: '2020-02-02T04:02:02.222Z' },
+        { filename: 'file2', modificationDate: '2020-02-02T06:02:02.222Z' }
+      ]);
+      expect(logger.error).toHaveBeenCalledWith(
+        `Error while reading in errorFolder folder file stats "${path.join('errorFolder', 'errorFile')}": Error: error file`
+      );
+    });
+
+    it('should properly get files', async () => {
+      (fs.readdir as jest.Mock).mockImplementation(() => ['file1', 'file2']);
+      (fs.stat as jest.Mock)
+        .mockReturnValueOnce({ mtimeMs: DateTime.fromISO('2000-02-02T02:02:02.222Z').toMillis() })
+        .mockReturnValueOnce({ mtimeMs: DateTime.fromISO('2030-02-02T02:02:02.222Z').toMillis() });
+
+      const files = await getFilesFiltered('errorFolder', '2020-02-02T02:02:02.222Z', '2020-02-03T02:02:02.222Z', 'file', logger);
+
+      expect(files).toEqual([]);
+    });
+
+    it('should properly get files without filtering', async () => {
+      (fs.readdir as jest.Mock).mockImplementation(() => ['file1', 'file2']);
+      (fs.stat as jest.Mock)
+        .mockReturnValueOnce({ mtimeMs: DateTime.fromISO('2000-02-02T02:02:02.222Z').toMillis(), size: 100 })
+        .mockReturnValueOnce({ mtimeMs: DateTime.fromISO('2030-02-02T02:02:02.222Z').toMillis(), size: 60 });
+
+      const files = await getFilesFiltered('errorFolder', '', '', '', logger);
+
+      expect(files).toEqual([
+        { filename: 'file1', modificationDate: '2000-02-02T02:02:02.222Z', size: 100 },
+        {
+          filename: 'file2',
+          modificationDate: '2030-02-02T02:02:02.222Z',
+          size: 60
+        }
+      ]);
+    });
+  });
+
+  describe('validateCronExpression', () => {
+    beforeEach(() => {
+      jest.resetAllMocks();
+      jest.useFakeTimers().setSystemTime(new Date(nowDateString));
+    });
+
+    it('should properly validate a cron expression', () => {
+      const result = validateCronExpression('* * * * * *');
+      const expectedResult = {
+        humanReadableForm: 'Every second, every minute, every hour, every day',
+        nextExecutions: ['2020-02-02T02:02:03.000Z', '2020-02-02T02:02:04.000Z', '2020-02-02T02:02:05.000Z']
+      };
+      expect(result).toEqual(expectedResult);
+    });
+
+    it('should properly validate a cron expression', () => {
+      const result = validateCronExpression('0 */10 * * * *');
+      const expectedResult = {
+        humanReadableForm: 'Every 10 minutes, every hour, every day',
+        nextExecutions: ['2020-02-02T02:10:00.000Z', '2020-02-02T02:20:00.000Z', '2020-02-02T02:30:00.000Z']
+      };
+      expect(result).toEqual(expectedResult);
+    });
+
+    it('should throw an error for too many fields', () => {
+      expect(() => validateCronExpression('* * * * * * 2024')).toThrow(
+        'Too many fields. Only seconds, minutes, hours, day of month, month and day of week are supported.'
+      );
+    });
+
+    it('should throw an error for non standard characters', () => {
+      expect(() => validateCronExpression('* * * * 5L')).toThrow('Expression contains non-standard characters: L');
+      expect(() => validateCronExpression('* * * W * *')).toThrow('Expression contains non-standard characters: W');
+      expect(() => validateCronExpression('* * * * * 5#3')).toThrow('Expression contains non-standard characters: #');
+      expect(() => validateCronExpression('? ? * * * *')).toThrow('Expression contains non-standard characters: ?');
+      expect(() => validateCronExpression('H * * * *')).toThrow('Expression contains non-standard characters: H');
+    });
+
+    it('should throw an error for invalid cron expression caught by cronstrue', () => {
+      expect(() => validateCronExpression('0 35 10 19 01')).toThrow('Hours part must be >= 0 and <= 23');
+      expect(() => validateCronExpression('0 23 10 19 01')).toThrow('Month part must be >= 1 and <= 12');
+      expect(() => validateCronExpression('0 23 10 12 8')).toThrow('DOW part must be >= 0 and <= 6');
+    });
+
+    it('should throw an error for invalid cron expression caught by cron-parser', () => {
+      expect(() => validateCronExpression('0 23 10 12 6/')).toThrow('Constraint error, cannot repeat at every 0 time.');
+      expect(() => validateCronExpression('0 23 10 12 6/-')).toThrow('Constraint error, cannot repeat at every NaN time.');
+      expect(() => validateCronExpression('0 23 10 12 6/-')).toThrow('Constraint error, cannot repeat at every NaN time.');
+      expect(() => validateCronExpression('0 23 10-1 12 6/1')).toThrow('Invalid range: 10-1');
+    });
+
+    it('should catch unexpected errors', () => {
+      jest.spyOn(cronstrue, 'toString').mockImplementation(() => {
+        throw null;
+      });
+      expect(() => validateCronExpression('* * * * * *')).toThrow('Invalid cron expression');
+    });
   });
 });

@@ -38,6 +38,16 @@
               <span class="fa fa-spinner fa-spin" role="status" *ngIf="state.isPending | async"></span>
               <span class="fa fa-play" role="status" *ngIf="(state.isPending | async) === false"></span>
             </button>
+            <button
+              *ngIf="historyQuery.status === 'FINISHED' || historyQuery.status === 'ERRORED'"
+              class="btn btn-primary pull-right me-2"
+              id="history-query-restart"
+              (click)="toggleHistoryQuery('RUNNING')"
+              [disabled]="state.isPending | async"
+            >
+              <span class="fa fa-spinner fa-spin" role="status" *ngIf="state.isPending | async"></span>
+              <span class="fa fa-repeat" role="status" *ngIf="(state.isPending | async) === false"></span>
+            </button>
           </span>
         </h1>
         <span class="text-disabled pull-right me-2">
@@ -100,11 +110,16 @@
       <!-- North Specific settings -->
       <oib-box>
         <ng-template oibBoxTitle>
-          <span
-            translate="history-query.north.specific-settings"
-            [translateParams]="{ type: northManifest.name }"
-            id="north-specific-settings-title"
-          ></span>
+          <div class="d-flex justify-content-between align-items-center">
+            <span
+              translate="history-query.north.specific-settings"
+              [translateParams]="{ type: northManifest.name }"
+              id="north-specific-settings-title"
+            ></span>
+            <button type="button" class="btn btn-primary btn-sm" id="test-connection-north" (click)="test('north')">
+              <span translate="north.test-connection.button"></span>
+            </button>
+          </div>
         </ng-template>
         <table class="table table-sm table-hover oib-table">
           <tbody class="north-settings">
@@ -119,11 +134,16 @@
       <!-- South Specific settings -->
       <oib-box>
         <ng-template oibBoxTitle>
-          <span
-            translate="history-query.south.specific-settings"
-            [translateParams]="{ type: southManifest.name }"
-            id="south-specific-settings-title"
-          ></span>
+          <div class="d-flex justify-content-between align-items-center">
+            <span
+              translate="history-query.south.specific-settings"
+              [translateParams]="{ type: southManifest.name }"
+              id="south-specific-settings-title"
+            ></span>
+            <button type="button" class="btn btn-primary btn-sm" id="test-connection-south" (click)="test('south')">
+              <span translate="south.test-connection.button"></span>
+            </button>
+          </div>
         </ng-template>
         <table class="table table-sm table-hover oib-table">
           <tbody class="south-settings">

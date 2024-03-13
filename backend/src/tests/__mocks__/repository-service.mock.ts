@@ -79,6 +79,20 @@ export default jest.fn().mockImplementation(() => ({
     updateScanMode: jest.fn(),
     deleteScanMode: jest.fn()
   },
+  certificateRepository: {
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    updateNameAndDescription: jest.fn(),
+    delete: jest.fn()
+  },
+  registrationRepository: {
+    getRegistrationSettings: jest.fn(),
+    unregister: jest.fn(),
+    activateRegistration: jest.fn(),
+    updateRegistration: jest.fn()
+  },
   proxyRepository: {
     getProxies: jest.fn(),
     getProxy: jest.fn(),
@@ -99,6 +113,20 @@ export default jest.fn().mockImplementation(() => ({
     getScopeById: jest.fn(),
     searchScopesByName: jest.fn(),
     deleteLogsByScopeId: jest.fn()
+  },
+  commandRepository: {
+    findAll: jest.fn(),
+    searchCommandsList: jest.fn(),
+    searchCommandsPage: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    cancel: jest.fn(),
+    markAsCompleted: jest.fn(),
+    markAsErrored: jest.fn(),
+    markAsRunning: jest.fn(),
+    markAsAcknowledged: jest.fn(),
+    delete: jest.fn()
   },
   engineRepository: {
     getEngineSettings: jest.fn(),
@@ -126,6 +154,7 @@ export default jest.fn().mockImplementation(() => ({
     getLatestMaxInstants: jest.fn(),
     updateCacheScanModeId: jest.fn(),
     createOrUpdateCacheScanMode: jest.fn(),
-    deleteCacheScanMode: jest.fn()
+    deleteCacheScanMode: jest.fn(),
+    getSouthCacheScanMode: jest.fn()
   }
 }));

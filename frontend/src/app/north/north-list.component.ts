@@ -37,7 +37,7 @@ const PAGE_SIZE = 15;
     LegendComponent
   ],
   templateUrl: './north-list.component.html',
-  styleUrls: ['./north-list.component.scss']
+  styleUrl: './north-list.component.scss'
 })
 export class NorthListComponent implements OnInit {
   allNorths: Array<NorthConnectorDTO> | null = null;
@@ -92,7 +92,7 @@ export class NorthListComponent implements OnInit {
       })
       .pipe(
         switchMap(() => {
-          return this.northConnectorService.deleteNorthConnector(north.id);
+          return this.northConnectorService.delete(north.id);
         })
       )
       .subscribe(() => {

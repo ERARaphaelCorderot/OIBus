@@ -1,8 +1,9 @@
 import { AfterContentInit, Component, ContentChildren, EventEmitter, forwardRef, Input, Output, QueryList } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MultiSelectOptionDirective } from './multi-select-option.directive';
-import { NgbDropdown, NgbDropdownItem, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
-import { NgForOf, NgIf } from '@angular/common';
+import { NgbDropdown, NgbDropdownButtonItem, NgbDropdownItem, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
+import { NgFor, NgIf } from '@angular/common';
+import { FormControlValidationDirective } from '../form-control-validation.directive';
 
 /**
  * A form control component allowing to do multiple selections.
@@ -22,7 +23,7 @@ import { NgForOf, NgIf } from '@angular/common';
 @Component({
   selector: 'oib-multi-select',
   templateUrl: './multi-select.component.html',
-  styleUrls: ['./multi-select.component.scss'],
+  styleUrl: './multi-select.component.scss',
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -30,7 +31,16 @@ import { NgForOf, NgIf } from '@angular/common';
       multi: true
     }
   ],
-  imports: [NgbDropdown, NgIf, NgForOf, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem],
+  imports: [
+    NgbDropdown,
+    FormControlValidationDirective,
+    NgbDropdownToggle,
+    NgIf,
+    NgbDropdownMenu,
+    NgFor,
+    NgbDropdownButtonItem,
+    NgbDropdownItem
+  ],
   standalone: true
 })
 export class MultiSelectComponent implements ControlValueAccessor, AfterContentInit {

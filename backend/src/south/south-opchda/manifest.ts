@@ -18,45 +18,37 @@ const manifest: SouthConnectorManifest = {
       type: 'OibText',
       label: 'Remote agent URL',
       defaultValue: 'http://ip-adress-or-host:2224',
-      validators: [{ key: 'required' }]
+      validators: [{ key: 'required' }],
+      displayInViewMode: true
     },
     {
       key: 'retryInterval',
       type: 'OibNumber',
-      label: 'Connection timeout',
+      label: 'Retry interval',
       defaultValue: 1000,
       unitLabel: 'ms',
       class: 'col-3',
       validators: [{ key: 'required' }, { key: 'min', params: { min: 100 } }, { key: 'max', params: { max: 30_000 } }]
     },
     {
-      key: 'serverUrl',
+      key: 'host',
       type: 'OibText',
       label: 'Server URL (from the agent)',
-      defaultValue: 'opchda://domain.name/Matrikon.OPC.Simulation',
+      defaultValue: 'localhost',
+      class: 'col-7',
       newRow: true,
       validators: [{ key: 'required' }],
-      displayInViewMode: false
+      displayInViewMode: true
     },
     {
-      key: 'readTimeout',
-      type: 'OibNumber',
-      label: 'Read timeout (s)',
-      defaultValue: 180,
-      class: 'col-3',
-      newRow: false,
-      validators: [{ key: 'required' }, { key: 'min', params: { min: 100 } }, { key: 'max', params: { max: 3_600_000 } }],
-      displayInViewMode: false
-    },
-    {
-      key: 'maxReturnValues',
-      type: 'OibNumber',
-      label: 'Max return values',
-      defaultValue: 1000,
-      class: 'col-3',
+      key: 'serverName',
+      type: 'OibText',
+      label: 'Server name',
+      defaultValue: 'Matrikon.OPC.Simulation',
+      class: 'col-5',
       newRow: false,
       validators: [{ key: 'required' }],
-      displayInViewMode: false
+      displayInViewMode: true
     }
   ],
   items: {
@@ -76,8 +68,9 @@ const manifest: SouthConnectorManifest = {
         key: 'aggregate',
         type: 'OibSelect',
         label: 'Aggregate',
-        options: ['Raw', 'Average', 'Minimum', 'Maximum', 'Count'],
-        defaultValue: 'Raw',
+        pipe: 'aggregates',
+        options: ['raw', 'average', 'minimum', 'maximum'],
+        defaultValue: 'raw',
         validators: [{ key: 'required' }],
         displayInViewMode: true
       },
@@ -85,10 +78,12 @@ const manifest: SouthConnectorManifest = {
         key: 'resampling',
         type: 'OibSelect',
         label: 'Resampling',
-        options: ['None', 'Second', '10 Seconds', '30 Seconds', 'Minute', 'Hour', 'Day'],
-        defaultValue: 'None',
-        displayInViewMode: true,
-        validators: [{ key: 'required' }]
+        pipe: 'resampling',
+        options: ['none', 'second', '10Seconds', '30Seconds', 'minute', 'hour', 'day'],
+        defaultValue: 'none',
+        validators: [{ key: 'required' }],
+        conditionalDisplay: { field: 'aggregate', values: ['average', 'minimum', 'maximum', 'count'] },
+        displayInViewMode: true
       }
     ]
   }

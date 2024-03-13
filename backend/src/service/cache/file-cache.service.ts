@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises';
+import { createReadStream, ReadStream } from 'node:fs';
 import path from 'node:path';
 
-import { createFolder } from '../utils';
+import { createFolder, getFilesFiltered } from '../utils';
 import pino from 'pino';
 
 import { Instant } from '../../../../shared/model/types';
-import { DateTime } from 'luxon';
 import { NorthCacheFiles, NorthCacheSettingsDTO } from '../../../../shared/model/north-connector.model';
 import { EventEmitter } from 'node:events';
 
@@ -176,7 +176,20 @@ export default class FileCacheService {
    * Get list of error files.
    */
   async getErrorFiles(fromDate: Instant, toDate: Instant, nameFilter: string): Promise<Array<NorthCacheFiles>> {
-    return this.getFilesFiltered(this._errorFolder, fromDate, toDate, nameFilter);
+    return getFilesFiltered(this._errorFolder, fromDate, toDate, nameFilter, this._logger);
+  }
+
+  /**
+   * Get error file content.
+   */
+  async getErrorFileContent(filename: string): Promise<ReadStream | null> {
+    try {
+      await fs.stat(path.join(this._errorFolder, filename));
+    } catch (error) {
+      this._logger.error(`Error while reading file "${path.join(this._errorFolder, filename)}": ${error}`);
+      return null;
+    }
+    return createReadStream(path.join(this._errorFolder, filename));
   }
 
   /**
@@ -189,9 +202,8 @@ export default class FileCacheService {
         this._logger.debug(`Removing file "${filePath}`);
         const fileStat = await fs.stat(filePath);
         await fs.unlink(filePath);
-        this.triggerRun.emit('cache-size', -fileStat.size);
-
         this.removeFileFromQueue(filePath);
+        this.triggerRun.emit('cache-size', -fileStat.size);
       })
     );
   }
@@ -240,7 +252,21 @@ export default class FileCacheService {
    * Get list of cache files.
    */
   async getCacheFiles(fromDate: Instant, toDate: Instant, nameFilter: string): Promise<Array<NorthCacheFiles>> {
-    return this.getFilesFiltered(this._fileFolder, fromDate, toDate, nameFilter);
+    return getFilesFiltered(this._fileFolder, fromDate, toDate, nameFilter, this._logger);
+  }
+
+  /**
+   * Get cache file content.
+   */
+  async getCacheFileContent(filename: string): Promise<ReadStream | null> {
+    try {
+      await fs.stat(path.join(this._fileFolder, filename));
+    } catch (error) {
+      this._logger.error(`Error while reading file "${path.join(this._fileFolder, filename)}": ${error}`);
+      return null;
+    }
+
+    return createReadStream(path.join(this._fileFolder, filename));
   }
 
   /**
@@ -277,33 +303,5 @@ export default class FileCacheService {
 
   set settings(value: NorthCacheSettingsDTO) {
     this._settings = value;
-  }
-
-  /**
-   * Returns files from the folder based on filters.
-   */
-  private async getFilesFiltered(folder: string, fromDate: Instant, toDate: Instant, nameFilter: string): Promise<Array<NorthCacheFiles>> {
-    const filenames = await fs.readdir(folder);
-    const filteredFilenames: Array<NorthCacheFiles> = [];
-    for (const filename of filenames) {
-      try {
-        const stats = await fs.stat(path.join(folder, filename));
-
-        const dateIsSuperiorToStart = fromDate ? stats.mtimeMs >= DateTime.fromISO(fromDate).toMillis() : true;
-        const dateIsInferiorToEnd = toDate ? stats.mtimeMs <= DateTime.fromISO(toDate).toMillis() : true;
-        const dateIsBetween = dateIsSuperiorToStart && dateIsInferiorToEnd;
-        const filenameContains = nameFilter ? filename.toUpperCase().includes(nameFilter.toUpperCase()) : true;
-        if (dateIsBetween && filenameContains) {
-          filteredFilenames.push({
-            filename,
-            modificationDate: DateTime.fromMillis(stats.mtimeMs).toUTC().toISO() as Instant,
-            size: stats.size
-          });
-        }
-      } catch (error) {
-        this._logger.error(`Error while reading in ${path.basename(folder)} folder file stats "${path.join(folder, filename)}": ${error}`);
-      }
-    }
-    return filteredFilenames;
   }
 }

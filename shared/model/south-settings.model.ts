@@ -19,7 +19,7 @@ export type SouthModbusSettingsEndianness = (typeof SOUTH_MODBUS_SETTINGS_ENDIAN
 const SOUTH_MODBUS_ITEM_SETTINGS_MODBUS_TYPES = ['coil', 'discreteInput', 'inputRegister', 'holdingRegister'] as const
 export type SouthModbusItemSettingsModbusType = (typeof SOUTH_MODBUS_ITEM_SETTINGS_MODBUS_TYPES)[number];
 
-const SOUTH_MODBUS_ITEM_SETTINGS_DATA_TYPES = ['UInt16', 'Int16', 'UInt32', 'Int32', 'BigUInt64', 'BigInt64', 'Float', 'Double'] as const
+const SOUTH_MODBUS_ITEM_SETTINGS_DATA_TYPES = ['Bit', 'UInt16', 'Int16', 'UInt32', 'Int32', 'BigUInt64', 'BigInt64', 'Float', 'Double'] as const
 export type SouthModbusItemSettingsDataType = (typeof SOUTH_MODBUS_ITEM_SETTINGS_DATA_TYPES)[number];
 
 const SOUTH_M_Q_T_T_SETTINGS_AUTHENTICATION_TYPES = ['none', 'basic', 'cert'] as const
@@ -67,6 +67,9 @@ export type SouthODBCItemSettingsSerializationType = (typeof SOUTH_O_D_B_C_ITEM_
 const SOUTH_O_D_B_C_ITEM_SETTINGS_SERIALIZATION_DELIMITERS = ['DOT', 'SEMI_COLON', 'COLON', 'COMMA', 'NON_BREAKING_SPACE', 'SLASH', 'TAB', 'PIPE'] as const
 export type SouthODBCItemSettingsSerializationDelimiter = (typeof SOUTH_O_D_B_C_ITEM_SETTINGS_SERIALIZATION_DELIMITERS)[number];
 
+const SOUTH_O_I_ANALYTICS_SETTINGS_SPECIFIC_SETTINGS_AUTHENTICATIONS = ['basic', 'aad-client-secret', 'aad-certificate'] as const
+export type SouthOIAnalyticsSettingsSpecificSettingsAuthentication = (typeof SOUTH_O_I_ANALYTICS_SETTINGS_SPECIFIC_SETTINGS_AUTHENTICATIONS)[number];
+
 const SOUTH_O_I_ANALYTICS_ITEM_SETTINGS_SERIALIZATION_TYPES = ['csv'] as const
 export type SouthOIAnalyticsItemSettingsSerializationType = (typeof SOUTH_O_I_ANALYTICS_ITEM_SETTINGS_SERIALIZATION_TYPES)[number];
 
@@ -82,10 +85,10 @@ export type SouthOLEItemSettingsSerializationType = (typeof SOUTH_O_L_E_ITEM_SET
 const SOUTH_O_L_E_ITEM_SETTINGS_SERIALIZATION_DELIMITERS = ['DOT', 'SEMI_COLON', 'COLON', 'COMMA', 'NON_BREAKING_SPACE', 'SLASH', 'TAB', 'PIPE'] as const
 export type SouthOLEItemSettingsSerializationDelimiter = (typeof SOUTH_O_L_E_ITEM_SETTINGS_SERIALIZATION_DELIMITERS)[number];
 
-const SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_AGGREGATES = ['Raw', 'Average', 'Minimum', 'Maximum', 'Count'] as const
+const SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_AGGREGATES = ['raw', 'average', 'minimum', 'maximum'] as const
 export type SouthOPCHDAItemSettingsAggregate = (typeof SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_AGGREGATES)[number];
 
-const SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_RESAMPLINGS = ['None', 'Second', '10 Seconds', '30 Seconds', 'Minute', 'Hour', 'Day'] as const
+const SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_RESAMPLINGS = ['none', 'second', '10Seconds', '30Seconds', 'minute', 'hour', 'day'] as const
 export type SouthOPCHDAItemSettingsResampling = (typeof SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_RESAMPLINGS)[number];
 
 const SOUTH_O_P_C_U_A_SETTINGS_AUTHENTICATION_TYPES = ['none', 'basic', 'cert'] as const
@@ -154,6 +157,23 @@ export interface SouthMQTTSettingsAuthentication {
   certFilePath?: string;
   keyFilePath?: string | null;
   caFilePath?: string | null;
+}
+
+export interface SouthOIAnalyticsSettingsSpecificSettings {
+  host: string;
+  acceptUnauthorized: boolean;
+  authentication: SouthOIAnalyticsSettingsSpecificSettingsAuthentication;
+  accessKey?: string;
+  secretKey?: string | null;
+  tenantId?: string | null;
+  clientId?: string;
+  clientSecret?: string | null;
+  certificateId?: string | null;
+  scope?: string | null;
+  useProxy: boolean;
+  proxyUrl?: string;
+  proxyUsername?: string | null;
+  proxyPassword?: string | null;
 }
 
 export interface SouthOPCUASettingsAuthentication {
@@ -239,15 +259,9 @@ export interface SouthODBCSettings extends BaseSouthSettings {
 }
 
 export interface SouthOIAnalyticsSettings extends BaseSouthSettings {
-  host: string;
-  acceptUnauthorized: boolean;
+  useOiaModule: boolean;
   timeout: number;
-  accessKey: string;
-  secretKey: string | null;
-  useProxy: boolean;
-  proxyUrl?: string;
-  proxyUsername?: string | null;
-  proxyPassword?: string | null;
+  specificSettings?: SouthOIAnalyticsSettingsSpecificSettings | null;
 }
 
 export interface SouthOLESettings extends BaseSouthSettings {
@@ -262,9 +276,8 @@ export interface SouthOLESettings extends BaseSouthSettings {
 export interface SouthOPCHDASettings extends BaseSouthSettings {
   agentUrl: string;
   retryInterval: number;
-  serverUrl: string;
-  readTimeout: number;
-  maxReturnValues: number;
+  host: string;
+  serverName: string;
 }
 
 export interface SouthOPCUASettings extends BaseSouthSettings {
@@ -537,6 +550,7 @@ export interface SouthModbusItemSettings extends BaseSouthItemSettings {
   address: string;
   modbusType: SouthModbusItemSettingsModbusType;
   dataType?: SouthModbusItemSettingsDataType;
+  bitIndex?: number;
   multiplierCoefficient?: number;
 }
 
@@ -580,7 +594,7 @@ export interface SouthOLEItemSettings extends BaseSouthItemSettings {
 export interface SouthOPCHDAItemSettings extends BaseSouthItemSettings {
   nodeId: string;
   aggregate: SouthOPCHDAItemSettingsAggregate;
-  resampling: SouthOPCHDAItemSettingsResampling;
+  resampling?: SouthOPCHDAItemSettingsResampling;
 }
 
 export interface SouthOPCUAItemSettings extends BaseSouthItemSettings {

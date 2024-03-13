@@ -96,7 +96,8 @@ const southConnectors: Array<SouthConnectorDTO> = [
     history: {
       maxInstantPerItem: true,
       maxReadInterval: 3600,
-      readDelay: 0
+      readDelay: 0,
+      overlap: 0
     },
     settings: {}
   },
@@ -109,7 +110,8 @@ const southConnectors: Array<SouthConnectorDTO> = [
     history: {
       maxInstantPerItem: true,
       maxReadInterval: 3600,
-      readDelay: 0
+      readDelay: 0,
+      overlap: 0
     },
     settings: {}
   }
@@ -144,20 +146,31 @@ const createdNorth = {
   setLogger: jest.fn(),
   updateScanMode: jest.fn(),
   getErrorFiles: jest.fn(),
+  getErrorFileContent: jest.fn(),
   removeErrorFiles: jest.fn(),
   retryErrorFiles: jest.fn(),
   removeAllErrorFiles: jest.fn(),
   retryAllErrorFiles: jest.fn(),
   getCacheFiles: jest.fn(),
+  getCacheFileContent: jest.fn(),
   removeCacheFiles: jest.fn(),
   archiveCacheFiles: jest.fn(),
   getArchiveFiles: jest.fn(),
+  getArchiveFileContent: jest.fn(),
   removeArchiveFiles: jest.fn(),
   retryArchiveFiles: jest.fn(),
   removeAllArchiveFiles: jest.fn(),
   retryAllArchiveFiles: jest.fn(),
   getMetricsDataStream: jest.fn(),
-  resetMetrics: jest.fn()
+  resetMetrics: jest.fn(),
+  getCacheValues: jest.fn(),
+  removeCacheValues: jest.fn(),
+  removeAllCacheValues: jest.fn(),
+  getValueErrors: jest.fn(),
+  removeValueErrors: jest.fn(),
+  removeAllValueErrors: jest.fn(),
+  retryValueErrors: jest.fn(),
+  retryAllValueErrors: jest.fn()
 };
 
 describe('OIBusEngine', () => {
@@ -279,6 +292,11 @@ describe('OIBusEngine', () => {
     await engine.getErrorFiles(northConnectors[1].id, '2020-02-02T02:02:02.222Z', '2022-02-02T02:02:02.222Z', '');
     expect(createdNorth.getErrorFiles).toHaveBeenCalledWith('2020-02-02T02:02:02.222Z', '2022-02-02T02:02:02.222Z', '');
 
+    await engine.getErrorFileContent('northId', 'file1');
+    expect(createdNorth.getErrorFileContent).not.toHaveBeenCalled();
+    await engine.getErrorFileContent(northConnectors[1].id, 'file1');
+    expect(createdNorth.getErrorFileContent).toHaveBeenCalledWith('file1');
+
     await engine.retryErrorFiles('northId', ['file1']);
     expect(createdNorth.retryErrorFiles).not.toHaveBeenCalled();
     await engine.retryErrorFiles(northConnectors[1].id, ['file1']);
@@ -304,6 +322,11 @@ describe('OIBusEngine', () => {
     await engine.getCacheFiles(northConnectors[1].id, '2020-02-02T02:02:02.222Z', '2022-02-02T02:02:02.222Z', '');
     expect(createdNorth.getCacheFiles).toHaveBeenCalledWith('2020-02-02T02:02:02.222Z', '2022-02-02T02:02:02.222Z', '');
 
+    await engine.getCacheFileContent('northId', 'file1');
+    expect(createdNorth.getCacheFileContent).not.toHaveBeenCalled();
+    await engine.getCacheFileContent(northConnectors[1].id, 'file1');
+    expect(createdNorth.getCacheFileContent).toHaveBeenCalledWith('file1');
+
     await engine.removeCacheFiles('northId', ['file1']);
     expect(createdNorth.removeCacheFiles).not.toHaveBeenCalled();
     await engine.removeCacheFiles(northConnectors[1].id, ['file1']);
@@ -318,6 +341,11 @@ describe('OIBusEngine', () => {
     expect(createdNorth.getArchiveFiles).not.toHaveBeenCalled();
     await engine.getArchiveFiles(northConnectors[1].id, '2020-02-02T02:02:02.222Z', '2022-02-02T02:02:02.222Z', '');
     expect(createdNorth.getArchiveFiles).toHaveBeenCalledWith('2020-02-02T02:02:02.222Z', '2022-02-02T02:02:02.222Z', '');
+
+    await engine.getArchiveFileContent('northId', 'file1');
+    expect(createdNorth.getArchiveFileContent).not.toHaveBeenCalled();
+    await engine.getArchiveFileContent(northConnectors[1].id, 'file1');
+    expect(createdNorth.getArchiveFileContent).toHaveBeenCalledWith('file1');
 
     await engine.retryArchiveFiles('northId', ['file1']);
     expect(createdNorth.retryArchiveFiles).not.toHaveBeenCalled();
@@ -433,6 +461,66 @@ describe('OIBusEngine', () => {
     expect(createdNorth.updateScanMode).toHaveBeenCalledTimes(2);
     expect(createdSouth.updateScanMode).toHaveBeenCalledTimes(2);
 
+    // Cache value operations
+    // Get cache values
+    engine.getCacheValues('id1', '');
+    expect(createdNorth.getCacheValues).toHaveBeenCalledWith('');
+
+    engine.getCacheValues('id1', 'file');
+    expect(createdNorth.getCacheValues).toHaveBeenCalledWith('file');
+
+    engine.getCacheValues('northId', '');
+    expect(createdNorth.getCacheValues).toHaveBeenCalledTimes(2);
+
+    // Remove cache values
+    engine.removeCacheValues('id1', ['1.queue.tmp', '2.queue.tmp']);
+    expect(createdNorth.removeCacheValues).toHaveBeenCalledWith(['1.queue.tmp', '2.queue.tmp']);
+
+    engine.removeCacheValues('northId', []);
+    expect(createdNorth.removeCacheValues).toHaveBeenCalledTimes(1);
+
+    // Remove all cache values
+    engine.removeAllCacheValues('id1');
+    expect(createdNorth.removeAllCacheValues).toHaveBeenCalled();
+
+    engine.removeAllCacheValues('northId');
+    expect(createdNorth.removeAllCacheValues).toHaveBeenCalledTimes(1);
+
+    // Get cache value errors
+    engine.getValueErrors('id1', '', '', '');
+    expect(createdNorth.getValueErrors).toHaveBeenCalledWith('', '', '');
+
+    engine.getValueErrors('northId', '', '', '');
+    expect(createdNorth.getValueErrors).toHaveBeenCalledTimes(1);
+
+    // Remove cache value errors
+    engine.removeValueErrors('id1', ['1.queue.tmp', '2.queue.tmp']);
+    expect(createdNorth.removeValueErrors).toHaveBeenCalledWith(['1.queue.tmp', '2.queue.tmp']);
+
+    engine.removeValueErrors('northId', []);
+    expect(createdNorth.removeValueErrors).toHaveBeenCalledTimes(1);
+
+    // Remove all cache value errors
+    engine.removeAllValueErrors('id1');
+    expect(createdNorth.removeAllValueErrors).toHaveBeenCalled();
+
+    engine.removeAllValueErrors('northId');
+    expect(createdNorth.removeAllValueErrors).toHaveBeenCalledTimes(1);
+
+    // Retry cache value errors
+    engine.retryValueErrors('id1', ['1.queue.tmp', '2.queue.tmp']);
+    expect(createdNorth.retryValueErrors).toHaveBeenCalledWith(['1.queue.tmp', '2.queue.tmp']);
+
+    engine.retryValueErrors('northId', []);
+    expect(createdNorth.retryValueErrors).toHaveBeenCalledTimes(1);
+
+    // Retry all cache value errors
+    engine.retryAllValueErrors('id1');
+    expect(createdNorth.retryAllValueErrors).toHaveBeenCalled();
+
+    engine.retryAllValueErrors('northId');
+    expect(createdNorth.retryAllValueErrors).toHaveBeenCalledTimes(1);
+
     await engine.stopSouth('southId');
     expect(createdSouth.stop).not.toHaveBeenCalled();
     await engine.stopNorth('northId');
@@ -457,15 +545,15 @@ describe('OIBusEngine', () => {
     const baseFolder = path.resolve('./cache/data-stream', `south-${southId}`);
     await engine.deleteSouth(southId, name);
 
-    expect(stopSouthSpy).toBeCalled();
-    expect(filesExists).toBeCalledWith(baseFolder);
-    expect(fs.rm).toBeCalledWith(baseFolder, { recursive: true });
-    expect(logger.trace).toBeCalledWith(`Deleting base folder "${baseFolder}" of South connector "${name}" (${southId})`);
-    expect(logger.info).toBeCalledWith(`Deleted South connector "${name}" (${southId})`);
+    expect(stopSouthSpy).toHaveBeenCalled();
+    expect(filesExists).toHaveBeenCalledWith(baseFolder);
+    expect(fs.rm).toHaveBeenCalledWith(baseFolder, { recursive: true });
+    expect(logger.trace).toHaveBeenCalledWith(`Deleting base folder "${baseFolder}" of South connector "${name}" (${southId})`);
+    expect(logger.info).toHaveBeenCalledWith(`Deleted South connector "${name}" (${southId})`);
 
     // Removing again should not call rm, meaning that it's actually removed
     await engine.deleteSouth(southId, name);
-    expect(fs.rm).toBeCalledTimes(1);
+    expect(fs.rm).toHaveBeenCalledTimes(1);
   });
 
   it('should delete north connector', async () => {
@@ -482,15 +570,15 @@ describe('OIBusEngine', () => {
     const baseFolder = path.resolve('./cache/data-stream', `north-${northId}`);
     await engine.deleteNorth(northId, name);
 
-    expect(stopNorthSpy).toBeCalled();
-    expect(filesExists).toBeCalledWith(baseFolder);
-    expect(fs.rm).toBeCalledWith(baseFolder, { recursive: true });
-    expect(logger.trace).toBeCalledWith(`Deleting base folder "${baseFolder}" of North connector "${name}" (${northId})`);
-    expect(logger.info).toBeCalledWith(`Deleted North connector "${name}" (${northId})`);
+    expect(stopNorthSpy).toHaveBeenCalled();
+    expect(filesExists).toHaveBeenCalledWith(baseFolder);
+    expect(fs.rm).toHaveBeenCalledWith(baseFolder, { recursive: true });
+    expect(logger.trace).toHaveBeenCalledWith(`Deleting base folder "${baseFolder}" of North connector "${name}" (${northId})`);
+    expect(logger.info).toHaveBeenCalledWith(`Deleted North connector "${name}" (${northId})`);
 
     // Removing again should not call rm, meaning that it's actually removed
     await engine.deleteNorth(northId, name);
-    expect(fs.rm).toBeCalledTimes(1);
+    expect(fs.rm).toHaveBeenCalledTimes(1);
   });
 
   it('should handle connector deletion errors', async () => {
@@ -515,10 +603,10 @@ describe('OIBusEngine', () => {
     const southBaseFolder = path.resolve('./cache/data-stream', `south-${southId}`);
     await engine.deleteSouth(southId, southName);
 
-    expect(stopSouthSpy).toBeCalled();
-    expect(filesExists).toBeCalled();
-    expect(logger.trace).toBeCalledWith(`Deleting base folder "${southBaseFolder}" of South connector "${southName}" (${southId})`);
-    expect(logger.error).toBeCalledWith(`Unable to delete South connector "${southName}" (${southId} base folder: ${error}`);
+    expect(stopSouthSpy).toHaveBeenCalled();
+    expect(filesExists).toHaveBeenCalled();
+    expect(logger.trace).toHaveBeenCalledWith(`Deleting base folder "${southBaseFolder}" of South connector "${southName}" (${southId})`);
+    expect(logger.error).toHaveBeenCalledWith(`Unable to delete South connector "${southName}" (${southId} base folder: ${error}`);
 
     // North Connector error
     const northId = northConnectors[0].id;
@@ -526,9 +614,9 @@ describe('OIBusEngine', () => {
     const northBaseFolder = path.resolve('./cache/data-stream', `north-${northId}`);
     await engine.deleteNorth(northId, northName);
 
-    expect(stopNorthSpy).toBeCalled();
-    expect(filesExists).toBeCalled();
-    expect(logger.trace).toBeCalledWith(`Deleting base folder "${northBaseFolder}" of North connector "${northName}" (${northId})`);
-    expect(logger.error).toBeCalledWith(`Unable to delete North connector "${northName}" (${northId}) base folder: ${error}`);
+    expect(stopNorthSpy).toHaveBeenCalled();
+    expect(filesExists).toHaveBeenCalled();
+    expect(logger.trace).toHaveBeenCalledWith(`Deleting base folder "${northBaseFolder}" of North connector "${northName}" (${northId})`);
+    expect(logger.error).toHaveBeenCalledWith(`Unable to delete North connector "${northName}" (${northId}) base folder: ${error}`);
   });
 });

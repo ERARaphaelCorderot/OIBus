@@ -33,7 +33,6 @@
       "invalid-json": "The json is not valid",
       "all-access-control-tag-keys-must-be-valued": "All the tag keys used for access control must have a value. Missing tag key(s): {{ missingTagKeys }}.",
       "parsing-processor-error": "The parsing processor is not valid. {{ error }}",
-      "cron-error": "The cron expression is not valid",
       "must-be-unique": "Must be unique"
     },
     "period": {
@@ -90,6 +89,10 @@
   "enabled": "active",
   "disabled": "paused",
   "enums": {
+    "boolean": {
+      "true": "Yes",
+      "false": "No"
+    },
     "log-levels": {
       "silent": "Silent",
       "error": "Error",
@@ -101,11 +104,9 @@
     "scope-types": {
       "south": "South",
       "north": "North",
-      "data-stream": "Data stream engine",
-      "history-engine": "History engine",
       "history-query": "History query",
-      "web-server": "Web server",
-      "logger-service": "Logger service"
+      "internal": "Internal",
+      "web-server": "Web server"
     },
     "categories": {
       "api": "API",
@@ -122,6 +123,8 @@
       "api-key": "API key",
       "cert": "Certificate",
       "aad": "Application Active Directory",
+      "aad-client-secret": "Azure Active Directory with client secret",
+      "aad-certificate": "Azure Active Directory with certificate",
       "accessKey": "Access key",
       "powershell": "Powershell",
       "sasToken": "Shared Access Signature token",
@@ -176,6 +179,16 @@
       "FINISHED": "Finished",
       "RUNNING": "Running",
       "ABORTED": "Aborted"
+    },
+    "oibus-command-status": {
+      "RETRIEVED": "Pending",
+      "ERRORED": "Errored",
+      "CANCELLED": "Cancelled",
+      "COMPLETED": "Completed",
+      "RUNNING": "Running"
+    },
+    "oibus-command-type": {
+      "UPGRADE": "Upgrade"
     }
   },
   "nav": {
@@ -240,6 +253,35 @@
       "status": "Status"
     }
   },
+  "oia-module": {
+    "title": "OIAnalytics registration",
+    "registration": {
+      "title": "Register OIBus",
+      "host": "Host",
+      "accept-unauthorized": "Accept unauthorized",
+      "use-proxy": "Use proxy",
+      "proxy-url": "Proxy URL",
+      "proxy-username": "Proxy username",
+      "proxy-password": "Proxy password",
+      "register":"Register",
+      "saved": "Registration settings saved",
+      "unregister":"Unregister",
+      "confirm-unregistration":"Are you sure you want to unregister this OIBus?",
+      "unregistered":"OIBus unregistered",
+      "not-registered": "OIBus is not registered to OIAnalytics. Click on the button below to register.",
+      "pending": "Registration pending. Activate it on OIAnalytics with the following activation code",
+      "expiration-date": "Expired on",
+      "registered": "OIBus registered on {{ activationDate }}"
+    },
+    "commands":  {
+      "title": "Command list",
+      "creation-date": "Creation date",
+      "completion-date": "Completion date",
+      "status": "Status",
+      "type": "Type",
+      "none": "No command"
+    }
+  },
   "about": {
     "official-site": "Official site",
     "version": "Version",
@@ -250,12 +292,13 @@
     "operating-system": "Operating system",
     "architecture": "Architecture",
     "process-id": "Process ID",
-    "copyright": "(c) Copyright 2019-{{nowYear}} Optimistik, all rights reserved."
+    "copyright": "Copyright (c) 2018-{{nowYear}} Optimistik SAS. This software is distributed under the terms of the EUPL-1.2 license."
   },
   "engine": {
     "title": "Engine",
     "edit": "Edit settings",
     "edit-title": "Edit engine settings",
+    "oianalytics": "OIAnalytics",
     "shutdown": "Shutdown",
     "confirm-shutdown": "Are you sure you want to shutdown OIBus engine?",
     "shutdown-complete": "OIBus shut down",
@@ -272,6 +315,13 @@
       "file": "File",
       "database": "Database",
       "loki": "Loki"
+    },
+    "proxy-settings": {
+      "title": "Proxy server",
+      "proxy-enabled": "Enabled",
+      "enabled-details": "Enabled on port {{ port }}",
+      "disabled-details": "Disabled",
+      "proxy-port": "Port"
     },
     "logger": {
       "title": "Logger",
@@ -300,6 +350,10 @@
         "token-address": "Loki token url",
         "username": "Loki username",
         "password": "Loki password"
+      },
+      "oia": {
+        "title": "OIAnalytics logs",
+        "level": "OIA level"
       }
     },
     "monitoring": {
@@ -343,7 +397,32 @@
       "none": "No scan mode",
       "name": "Name",
       "description": "Description",
-      "cron": "Cron"
+      "cron": "Cron",
+      "cron-meaning": "Cron meaning:",
+      "cron-next-occurrences": "Next occurrences:"
+    },
+    "certificate": {
+      "list": "Certificates",
+      "title-create": "Create a certificate",
+      "title-edit": "Edit certificate",
+      "confirm-deletion": "Are you sure you want to delete the certificate {{ name }}? Beforehand, be sure it is not used.",
+      "updated": "Certificate {{ name }} successfully updated",
+      "created": "Certificate {{ name }} successfully created",
+      "deleted": "Certificate {{ name }} deleted",
+      "none": "No certificate",
+      "name": "Name",
+      "description": "Description",
+      "expiry": "Expires",
+      "public-key": "Public key",
+      "certificate": "Certificate",
+      "regenerate-certificate": "Regenerate certificate",
+      "common-name": "Common name",
+      "country-name": "Country name",
+      "state-or-province-name": "State/Province name",
+      "locality-name": "Locality name",
+      "organization-name": "Organization name",
+      "key-size": "Key size",
+      "days-before-expiry": "Days before expiry"
     },
     "ip-filter": {
       "list": "IP filters",
@@ -388,6 +467,7 @@
     "none": "No south connector matches the search",
     "name": "Name",
     "description": "Description",
+    "copy-cache-path": "Copy cache path ({{ id }})",
     "status": "Status",
     "enabled": "Enabled",
     "disabled": "Disabled",
@@ -401,7 +481,9 @@
       "settings": "History settings",
       "max-instant-per-item": "Max instant per item",
       "max-read-interval": "Max read interval",
-      "read-delay": "Read delay"
+      "read-delay": "Read delay",
+      "overlap": "Overlap",
+      "max-instant-per-item-disabling-warning": "Disabling max instant per item might result in data loss."
     },
     "test-connection": {
       "title": "Testing settings",
@@ -414,13 +496,14 @@
     "specific-settings": "{{ type }} settings",
     "edit-item-modal": {
       "create-title": "Add a new item to the south connector",
-      "edit-title": "Edit item"
+      "edit-title": "Edit item",
+      "copy-title": "Add a new item to the south connector"
     },
     "items": {
       "title": "Items",
       "export": "Export",
       "import": {
-        "button":"Import",
+        "button": "Import",
         "imported": "Items imported",
         "title": "Import validation",
         "error-title": "These items have errors and won't be imported",
@@ -444,11 +527,12 @@
       "scan-mode": "Schedule",
       "enabled": "South item {{name}} enabled",
       "disabled": "South item {{name}} disabled",
-      "display-mode-info": "The changes to the items will be committed directly",
+      "display-mode-info": "The changes to the items below will be saved directly",
       "edit-mode-info": "The changes to the items will be committed on save",
       "search": {
         "name": "Name"
-      }
+      },
+      "scan-mode-change-warning": "Changing scan mode when max instant per item is disabled might lead to data duplication or loss."
     },
     "monitoring": {
       "title": "{{ name }} metrics",
@@ -483,6 +567,7 @@
     "none": "No north connector matches the search",
     "name": "Name",
     "description": "Description",
+    "copy-cache-path": "Copy cache path ({{ id }})",
     "status": "Status",
     "enabled": "Enabled",
     "disabled": "Disabled",
@@ -523,7 +608,18 @@
       "refresh-cache": "Refresh cache",
       "cache-files": "Cache files",
       "cache-files-none": "No cache files",
-      "archive-selected-files": "Archive selected files"
+      "archive-selected-files": "Archive selected files",
+      "cache-values": "Cache values",
+      "cache-values-none": "No cache values",
+      "values-count": "Nr. of values",
+      "error-values": "Error values",
+      "error-values-none": "No error values",
+      "actions": "Actions",
+      "view-file-content": "File content",
+      "view-file": "View file",
+      "remove-file": "Remove file",
+      "retry-file": "Retry file",
+      "archive-file": "Archive file"
     },
     "archive-settings": {
       "title": "Archive",
@@ -537,6 +633,8 @@
       "title-creation": "Subscribe to a data source",
       "type": "Type",
       "name": "Name",
+      "display-mode-info": "The changes to the subscriptions will be committed directly",
+      "edit-mode-info": "The changes to the subscriptions will be committed on save",
       "south": {
         "title": "South connector",
         "created": "The connector is now subscribed to the South connector {{ name }}",
@@ -676,7 +774,8 @@
         "last-value": "Last value sent",
         "last-value-content": "{{ pointId }} at {{ timestamp }} with content {{ data }}",
         "last-run-start": "Last run",
-        "last-run-duration": "Last run duration"
+        "last-run-duration": "Last run duration",
+        "data-sent": "Data sent"
       },
       "south": {
         "title": "South metrics",
@@ -690,7 +789,9 @@
         "last-value": "Last value retrieved",
         "last-value-content": "{{ pointId }} at {{ timestamp }} with content {{ data }}",
         "last-run-start": "Last run",
-        "last-run-duration": "Last run duration"
+        "last-run-duration": "Last run duration",
+        "data-retrieved": "Data retrieved",
+        "interval-progress": "Interval progress"
       }
     }
   },

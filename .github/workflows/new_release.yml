@@ -3,7 +3,7 @@ name: Release new OIBus version
 on:
   push:
     branches:
-      - main
+      - stable
 
 concurrency:
   # New commit on branch cancels running workflows of the same branch
@@ -19,13 +19,13 @@ jobs:
     name: 'Tag new version'
     runs-on: ubuntu-latest
     steps:
-      - uses: google-github-actions/release-please-action@v3
+      - uses: google-github-actions/release-please-action@v4
         id: release
         with:
           command: manifest
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           signoff: "Optimistik SAS <optimistiksas@users.noreply.github.com>"
-          default-branch: main
+          default-branch: stable
           config-file: .github/release-please-config.json
           manifest-file: .github/release-please-manifest.json
 

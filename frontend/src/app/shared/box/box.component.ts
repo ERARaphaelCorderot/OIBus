@@ -12,6 +12,7 @@ import {
 import { NgbCollapse } from '@ng-bootstrap/ng-bootstrap';
 import { NgIf, NgTemplateOutlet } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
+import { OibHelpComponent } from '../oib-help/oib-help.component';
 
 @Directive({
   standalone: true,
@@ -30,12 +31,13 @@ export class BoxTitleDirective {
   selector: 'oib-box',
   standalone: true,
   templateUrl: './box.component.html',
-  styleUrls: ['./box.component.scss'],
-  imports: [NgbCollapse, NgIf, NgTemplateOutlet, TranslateModule],
+  styleUrl: './box.component.scss',
+  imports: [NgbCollapse, NgIf, NgTemplateOutlet, TranslateModule, OibHelpComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class BoxComponent implements AfterContentInit {
   @Input() boxTitle = '';
+  @Input() helpUrl = '';
   titleTemplateRef: TemplateRef<void> | null = null;
   removePadding = false;
   @Input() imagePath = '';

@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { SaveButtonComponent } from '../../../shared/save-button/save-button.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { formDirectives } from '../../../shared/form-directives';
@@ -9,8 +9,9 @@ import { DatetimePipe } from '../../../shared/datetime.pipe';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FileSizePipe } from '../../../shared/file-size.pipe';
 import { BoxComponent, BoxTitleDirective } from '../../../shared/box/box.component';
-import { Instant, Page, createPageFromArray } from '../../../../../../shared/model/types';
-import { emptyPage } from 'src/app/shared/test-utils';
+import { createPageFromArray, Instant, Page } from '../../../../../../shared/model/types';
+import { emptyPage } from '../../../shared/test-utils';
+import { NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap';
 
 const PAGE_SIZE = 15;
 const enum ColumnSortState {
@@ -25,10 +26,15 @@ export type FileTableData = {
   size: number;
 };
 
+export type ItemActionEvent = {
+  type: 'remove' | 'retry' | 'view' | 'archive';
+  file: FileTableData;
+};
+
 @Component({
   selector: 'oib-file-table',
   templateUrl: './file-table.component.html',
-  styleUrls: ['./file-table.component.scss'],
+  styleUrl: './file-table.component.scss',
   imports: [
     ...formDirectives,
     TranslateModule,
@@ -40,11 +46,21 @@ export type FileTableData = {
     FileSizePipe,
     RouterLink,
     BoxComponent,
-    BoxTitleDirective
+    BoxTitleDirective,
+    NgbTooltipModule
   ],
   standalone: true
 })
 export class FileTableComponent implements OnInit {
+  @Output() itemAction = new EventEmitter<ItemActionEvent>();
+
+  @Input() actions: Array<ItemActionEvent['type']> = [];
+  actionButtonData: { [key in ItemActionEvent['type']]: { icon: string; text: string } } = {
+    remove: { icon: 'fa-trash', text: 'north.cache-settings.remove-file' },
+    retry: { icon: 'fa-refresh', text: 'north.cache-settings.retry-file' },
+    view: { icon: 'fa-search', text: 'north.cache-settings.view-file' },
+    archive: { icon: 'fa-archive', text: 'north.cache-settings.archive-file' }
+  };
   @Input() files: Array<FileTableData> = [];
   pages: Page<FileTableData> = emptyPage();
   checkboxByFiles: Map<string, boolean> = new Map<string, boolean>();
@@ -60,8 +76,9 @@ export class FileTableComponent implements OnInit {
   mainFilesCheckboxState: 'CHECKED' | 'UNCHECKED' | 'INDETERMINATE' = 'UNCHECKED';
 
   ngOnInit() {
+    this.actions = [...new Set(this.actions)]; // remove possible duplicates
     this.clearCheckBoxes();
-    this.changePage(0);
+    this.sortTable();
   }
 
   /**
@@ -151,5 +168,9 @@ export class FileTableComponent implements OnInit {
       this.checkboxByFiles.set(file.filename, false);
     });
     this.mainFilesCheckboxState = 'UNCHECKED';
+  }
+
+  onItemActionClick(action: ItemActionEvent['type'], file: FileTableData) {
+    this.itemAction.emit({ type: action, file });
   }
 }

@@ -26,6 +26,8 @@ import { createPageFromArray, Page } from '../../../../../shared/model/types';
 import { emptyPage } from '../../shared/test-utils';
 import { PipeProviderService } from '../../shared/form/pipe-provider.service';
 import { ImportSouthItemsModalComponent } from '../import-south-items-modal/import-south-items-modal.component';
+import { PaginationComponent } from '../../shared/pagination/pagination.component';
+import { OibHelpComponent } from '../../shared/oib-help/oib-help.component';
 
 const PAGE_SIZE = 20;
 
@@ -44,22 +46,25 @@ const PAGE_SIZE = 20;
     BoxComponent,
     BoxTitleDirective,
     DatetimePipe,
-    DurationPipe
+    DurationPipe,
+    PaginationComponent,
+    OibHelpComponent
   ],
   templateUrl: './south-items.component.html',
-  styleUrls: ['./south-items.component.scss']
+  styleUrl: './south-items.component.scss'
 })
 export class SouthItemsComponent implements OnInit {
   @Input() southConnector: SouthConnectorDTO | null = null;
   @Input({ required: true }) southManifest!: SouthConnectorManifest;
   @Input({ required: true }) scanModes!: Array<ScanModeDTO>;
   @Input() inMemory = false;
+  @Input() maxInstantPerItem: boolean | null = null;
 
   @Output() readonly inMemoryItems = new EventEmitter<{ items: Array<SouthConnectorItemDTO>; itemIdsToDelete: Array<string> }>();
 
   allItems: Array<SouthConnectorItemDTO> = [];
   itemIdsToDelete: Array<string> = [];
-  private filteredItems: Array<SouthConnectorItemDTO> = [];
+  filteredItems: Array<SouthConnectorItemDTO> = [];
   displayedItems: Page<SouthConnectorItemDTO> = emptyPage();
   displaySettings: Array<OibFormControl> = [];
 
@@ -112,7 +117,7 @@ export class SouthItemsComponent implements OnInit {
     if (!searchText) {
       return items;
     }
-    return items.filter(item => item.name.toLowerCase().includes(searchText));
+    return items.filter(item => item.name.toLowerCase().includes(searchText.toLowerCase()));
   }
 
   /**
@@ -121,7 +126,7 @@ export class SouthItemsComponent implements OnInit {
   editItem(southItem: SouthConnectorItemDTO) {
     const modalRef = this.modalService.open(EditSouthItemModalComponent, { size: 'xl' });
     const component: EditSouthItemModalComponent = modalRef.componentInstance;
-    component.prepareForEdition(this.southManifest.items, this.allItems, this.scanModes, southItem);
+    component.prepareForEdition(this.southManifest.items, this.allItems, this.scanModes, southItem, this.maxInstantPerItem);
     this.refreshAfterEditionModalClosed(modalRef, southItem);
   }
 

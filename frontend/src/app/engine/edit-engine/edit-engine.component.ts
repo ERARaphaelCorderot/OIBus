@@ -9,13 +9,14 @@ import { NotificationService } from '../../shared/notification.service';
 import { formDirectives } from '../../shared/form-directives';
 import { ObservableState, SaveButtonComponent } from '../../shared/save-button/save-button.component';
 import { BoxComponent } from '../../shared/box/box.component';
+import { BackNavigationDirective } from '../../shared/back-navigation.directives';
 
 @Component({
   selector: 'oib-edit-engine',
   standalone: true,
-  imports: [TranslateModule, ...formDirectives, RouterLink, NgForOf, NgIf, SaveButtonComponent, BoxComponent],
+  imports: [TranslateModule, ...formDirectives, RouterLink, NgForOf, NgIf, SaveButtonComponent, BoxComponent, BackNavigationDirective],
   templateUrl: './edit-engine.component.html',
-  styleUrls: ['./edit-engine.component.scss']
+  styleUrl: './edit-engine.component.scss'
 })
 export class EditEngineComponent implements OnInit {
   readonly logLevels = LOG_LEVELS;
@@ -23,13 +24,15 @@ export class EditEngineComponent implements OnInit {
   engineForm = this.fb.group({
     name: ['', Validators.required],
     port: [null as number | null, Validators.required],
+    proxyEnabled: [false as boolean, Validators.required],
+    proxyPort: [null as number | null, Validators.required],
     logParameters: this.fb.group({
       console: this.fb.group({
         level: ['silent' as LogLevel, Validators.required]
       }),
       file: this.fb.group({
         level: ['info' as LogLevel, Validators.required],
-        maxFileSize: [null as number | null, [Validators.required, Validators.min(1), Validators.max(10)]],
+        maxFileSize: [null as number | null, [Validators.required, Validators.min(1), Validators.max(50)]],
         numberOfFiles: [null as number | null, [Validators.required, Validators.min(1)]]
       }),
       database: this.fb.group({
@@ -43,6 +46,9 @@ export class EditEngineComponent implements OnInit {
         tokenAddress: ['', Validators.pattern(/http.*/)],
         username: null as string | null,
         password: null as string | null
+      }),
+      oia: this.fb.group({
+        level: ['silent' as LogLevel, Validators.required]
       })
     })
   });
@@ -71,6 +77,8 @@ export class EditEngineComponent implements OnInit {
     const updatedSettings: EngineSettingsCommandDTO = {
       name: formValue.name!,
       port: formValue.port!,
+      proxyEnabled: formValue.proxyEnabled!,
+      proxyPort: formValue.proxyPort!,
       logParameters: {
         console: {
           level: formValue.logParameters!.console!.level!
@@ -91,6 +99,9 @@ export class EditEngineComponent implements OnInit {
           tokenAddress: formValue.logParameters!.loki!.tokenAddress!,
           username: formValue.logParameters!.loki!.username!,
           password: formValue.logParameters!.loki!.password!
+        },
+        oia: {
+          level: formValue.logParameters!.oia!.level!
         }
       }
     };

@@ -36,9 +36,9 @@ export default class HistoryQueryItemRepository {
       .map((result: any) => ({
         id: result.id,
         name: result.name,
-        enabled: result.enabled,
+        enabled: Boolean(result.enabled),
         connectorId: result.historyId,
-        scanModeId: 'history',
+        scanModeId: '',
         settings: JSON.parse(result.settings)
       }));
     const totalElements: number = (
@@ -66,9 +66,9 @@ export default class HistoryQueryItemRepository {
       .map((result: any) => ({
         id: result.id,
         name: result.name,
-        enabled: result.enabled,
+        enabled: Boolean(result.enabled),
         connectorId: historyId,
-        scanModeId: 'history',
+        scanModeId: '',
         settings: JSON.parse(result.settings)
       }));
   }
@@ -84,7 +84,7 @@ export default class HistoryQueryItemRepository {
       name: result.name,
       enabled: result.enabled,
       connectorId: result.historyId,
-      scanModeId: 'history',
+      scanModeId: '',
       settings: JSON.parse(result.settings)
     };
   }
@@ -106,7 +106,7 @@ export default class HistoryQueryItemRepository {
       name: result.name,
       enabled: result.enabled,
       connectorId: result.historyId,
-      scanModeId: 'history',
+      scanModeId: '',
       settings: JSON.parse(result.settings)
     };
   }

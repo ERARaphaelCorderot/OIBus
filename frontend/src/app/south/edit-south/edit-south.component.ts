@@ -25,6 +25,7 @@ import { SouthItemsComponent } from '../south-items/south-items.component';
 import { EditElementComponent } from '../../shared/form/oib-form-array/edit-element/edit-element.component';
 import { TestConnectionResultModalComponent } from '../../shared/test-connection-result-modal/test-connection-result-modal.component';
 import { ModalService } from '../../shared/modal.service';
+import { OibHelpComponent } from '../../shared/oib-help/oib-help.component';
 
 @Component({
   selector: 'oib-edit-south',
@@ -41,10 +42,11 @@ import { ModalService } from '../../shared/modal.service';
     BoxComponent,
     BoxTitleDirective,
     SouthItemsComponent,
-    EditElementComponent
+    EditElementComponent,
+    OibHelpComponent
   ],
   templateUrl: './edit-south.component.html',
-  styleUrls: ['./edit-south.component.scss']
+  styleUrl: './edit-south.component.scss'
 })
 export class EditSouthComponent implements OnInit {
   mode: 'create' | 'edit' = 'create';
@@ -63,12 +65,16 @@ export class EditSouthComponent implements OnInit {
       maxInstantPerItem: FormControl<boolean>;
       maxReadInterval: FormControl<number>;
       readDelay: FormControl<number>;
+      overlap: FormControl<number>;
     }>;
     settings: FormGroup;
   }> | null = null;
 
   inMemoryItems: Array<SouthConnectorItemDTO> = [];
   inMemoryItemIdsToDelete: Array<string> = [];
+
+  initialMaxInstantPerItem: boolean | null = null;
+  showMaxInstantPerItemWarning = false;
 
   constructor(
     private southConnectorService: SouthConnectorService,
@@ -124,7 +130,8 @@ export class EditSouthComponent implements OnInit {
           history: this.fb.group({
             maxInstantPerItem: manifest.modes.forceMaxInstantPerItem,
             maxReadInterval: 0,
-            readDelay: 200
+            readDelay: 200,
+            overlap: 0
           }),
           settings: createFormGroup(manifest.settings, this.fb)
         });
@@ -136,6 +143,8 @@ export class EditSouthComponent implements OnInit {
           // we should provoke all value changes to make sure fields are properly hidden and disabled
           this.southForm.setValue(this.southForm.getRawValue());
         }
+
+        this.initialMaxInstantPerItem = Boolean(this.southForm!.get('history.maxInstantPerItem')!.value);
       });
   }
 
@@ -173,7 +182,8 @@ export class EditSouthComponent implements OnInit {
       history: {
         maxInstantPerItem: formValue.history!.maxInstantPerItem!,
         maxReadInterval: formValue.history!.maxReadInterval!,
-        readDelay: formValue.history!.readDelay!
+        readDelay: formValue.history!.readDelay!,
+        overlap: formValue.history!.overlap!
       },
       settings: formValue.settings!
     };
@@ -189,5 +199,33 @@ export class EditSouthComponent implements OnInit {
   updateInMemoryItems({ items, itemIdsToDelete }: { items: Array<SouthConnectorItemDTO>; itemIdsToDelete: Array<string> }) {
     this.inMemoryItems = items;
     this.inMemoryItemIdsToDelete = itemIdsToDelete;
+  }
+
+  onMaxInstantPerItemChange() {
+    if (!this.initialMaxInstantPerItem) {
+      this.showMaxInstantPerItemWarning = false;
+      return;
+    }
+
+    const currentMaxInstantPerItem = Boolean(this.southForm!.get('history.maxInstantPerItem')!.value);
+    if (this.initialMaxInstantPerItem === currentMaxInstantPerItem) {
+      this.showMaxInstantPerItemWarning = false;
+      return;
+    }
+
+    // enabled -> disabled
+    if (this.initialMaxInstantPerItem && !currentMaxInstantPerItem) {
+      this.showMaxInstantPerItemWarning = true;
+    }
+  }
+
+  get maxInstantPerItem() {
+    if (this.mode === 'create') {
+      // When we are creating a new South connector,
+      // we don't pass down the max instant per item value
+      // because item changes are not persisted until the South connector is created
+      return null;
+    }
+    return Boolean(this.southForm!.get('history.maxInstantPerItem')?.value);
   }
 }

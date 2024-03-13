@@ -5,15 +5,23 @@ import path from 'node:path';
 
 import minimist from 'minimist';
 import { DateTime } from 'luxon';
+import fetch, { HeadersInit } from 'node-fetch';
+import AdmZip from 'adm-zip';
 
 import { CsvCharacter, DateTimeType, Instant, Interval, SerializationSettings, Timezone } from '../../../shared/model/types';
 import pino from 'pino';
 import csv from 'papaparse';
 import https from 'node:https';
 import http from 'node:http';
-import { OIBusInfo } from '../../../shared/model/engine.model';
+import { OIBusInfo, RegistrationSettingsDTO } from '../../../shared/model/engine.model';
 import os from 'node:os';
 import { version } from '../../package.json';
+import { NorthCacheFiles } from '../../../shared/model/north-connector.model';
+import EncryptionService from './encryption.service';
+import { createProxyAgent } from './proxy-agent';
+import cronstrue from 'cronstrue';
+import cronparser from 'cron-parser';
+import { ValidatedCronExpression } from '../../../shared/model/scan-mode.model';
 
 const COMPRESSION_LEVEL = 9;
 
@@ -90,6 +98,18 @@ export const compress = async (input: string, output: string): Promise<void> =>
       .on('finish', () => {
         resolve();
       });
+  });
+
+export const unzip = async (input: string, output: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const zip = new AdmZip(input);
+    zip.extractAllToAsync(output, true, true, error => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
   });
 
 /**
@@ -380,7 +400,14 @@ export const convertDateTimeToInstant = (
   }
 };
 
-export const formatQueryParams = (startTime: any, endTime: any, queryParams: Array<{ key: string; value: string }>): string => {
+export const formatQueryParams = (
+  startTime: any,
+  endTime: any,
+  queryParams: Array<{
+    key: string;
+    value: string;
+  }>
+): string => {
   if (queryParams.length === 0) {
     return '';
   }
@@ -433,6 +460,33 @@ export const httpGetWithBody = (body: string, options: any): Promise<any> =>
     req.end();
   });
 
+export const downloadFile = async (
+  connectionSettings: { host: string; headers: HeadersInit; agent: any },
+  endpoint: string,
+  filePath: string,
+  timeout: number
+): Promise<void> => {
+  let response;
+
+  try {
+    response = await fetch(`${connectionSettings.host}${endpoint}`, {
+      method: 'GET',
+      timeout,
+      agent: connectionSettings.agent,
+      headers: connectionSettings.headers
+    });
+  } catch (fetchError) {
+    throw new Error(`Download failed: ${fetchError}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(`Download failed with status code ${response.status} and message: ${response.statusText}`);
+  }
+
+  const buffer = await response.buffer();
+  await fs.writeFile(filePath, buffer);
+};
+
 export const getOIBusInfo = (): OIBusInfo => {
   return {
     dataDirectory: process.cwd(),
@@ -441,6 +495,152 @@ export const getOIBusInfo = (): OIBusInfo => {
     hostname: os.hostname(),
     operatingSystem: `${os.type()} ${os.release()}`,
     architecture: process.arch,
-    version
+    version,
+    platform: getPlatformFromOsType(os.type())
   };
+};
+
+export const getPlatformFromOsType = (osType: string): string => {
+  switch (osType) {
+    case 'Linux':
+      return 'linux';
+    case 'Darwin':
+      return 'macos';
+    case 'Windows_NT':
+      return 'windows';
+    default:
+      return 'unknown';
+  }
+};
+
+/**
+ * Returns file metadata from the folder based on filters.
+ */
+export const getFilesFiltered = async (
+  folder: string,
+  fromDate: Instant,
+  toDate: Instant,
+  nameFilter: string,
+  logger: pino.Logger
+): Promise<Array<NorthCacheFiles>> => {
+  const filenames = await fs.readdir(folder);
+  const filteredFilenames: Array<NorthCacheFiles> = [];
+  for (const filename of filenames) {
+    try {
+      const stats = await fs.stat(path.join(folder, filename));
+
+      const dateIsSuperiorToStart = fromDate ? stats.mtimeMs >= DateTime.fromISO(fromDate).toMillis() : true;
+      const dateIsInferiorToEnd = toDate ? stats.mtimeMs <= DateTime.fromISO(toDate).toMillis() : true;
+      const dateIsBetween = dateIsSuperiorToStart && dateIsInferiorToEnd;
+      const filenameContains = nameFilter ? filename.toUpperCase().includes(nameFilter.toUpperCase()) : true;
+      if (dateIsBetween && filenameContains) {
+        filteredFilenames.push({
+          filename,
+          modificationDate: DateTime.fromMillis(stats.mtimeMs).toUTC().toISO() as Instant,
+          size: stats.size
+        });
+      }
+    } catch (error) {
+      logger.error(`Error while reading in ${path.basename(folder)} folder file stats "${path.join(folder, filename)}": ${error}`);
+    }
+  }
+  return filteredFilenames;
+};
+
+export const getNetworkSettingsFromRegistration = async (
+  registrationSettings: RegistrationSettingsDTO | null,
+  endpoint: string,
+  encryptionService: EncryptionService
+): Promise<{ host: string; headers: HeadersInit; agent: any }> => {
+  if (!registrationSettings || registrationSettings.status !== 'REGISTERED') {
+    throw new Error('OIBus not registered in OIAnalytics');
+  }
+
+  if (registrationSettings.host.endsWith('/')) {
+    registrationSettings.host = registrationSettings.host.slice(0, registrationSettings.host.length - 1);
+  }
+
+  const headers: HeadersInit = {};
+
+  const token = await encryptionService.decryptText(registrationSettings.token!);
+  headers.authorization = `Bearer ${token}`;
+
+  const agent = createProxyAgent(
+    registrationSettings.useProxy,
+    `${registrationSettings.host}${endpoint}`,
+    registrationSettings.useProxy
+      ? {
+          url: registrationSettings.proxyUrl!,
+          username: registrationSettings.proxyUsername!,
+          password: registrationSettings.proxyPassword ? await encryptionService.decryptText(registrationSettings.proxyPassword) : null
+        }
+      : null,
+    registrationSettings.acceptUnauthorized
+  );
+
+  return {
+    host: registrationSettings.host,
+    headers,
+    agent
+  };
+};
+
+/**
+ * Validates a cron expression and returns the next 3 executions and a human-readable form.
+ * Next executions are in UTC.
+ *
+ * @throws {Error} if the cron expression is invalid, with a message
+ */
+export const validateCronExpression = (cron: string): ValidatedCronExpression => {
+  const response: ValidatedCronExpression = {
+    nextExecutions: [],
+    humanReadableForm: ''
+  };
+
+  // source for non-standard characters: https://en.wikipedia.org/wiki/Cron#Non-standard_characters
+  const nonStandardCharacters = ['L', 'W', '#', '?', 'H'];
+
+  try {
+    // we limit the number of fields to 6 because the
+    // backend does not support quartz cron (7th part would be years), so we show an error
+    if (cron.split(' ').filter(Boolean).length >= 7) {
+      throw new Error('Too many fields. Only seconds, minutes, hours, day of month, month and day of week are supported.');
+    }
+    // backend does not support these characters
+    const badCharecters = nonStandardCharacters.filter(c => cron.includes(c));
+    if (badCharecters.length > 0) {
+      throw new Error(`Expression contains non-standard characters: ${badCharecters.join(', ')}`);
+    }
+
+    // cronstrue throws an error if the cron is invalid
+    // this error is more user-friendly
+    response.humanReadableForm = cronstrue.toString(cron, {
+      verbose: true,
+      use24HourTimeFormat: true
+    });
+
+    // but cronstrue is not enough to validate the cron
+    // so we need to parse it with cronparser
+    response.nextExecutions = cronparser
+      .parseExpression(cron, { utc: true })
+      .iterate(3)
+      .map(exp => exp.toISOString() as Instant);
+  } catch (error: any) {
+    // cronparser throws an error
+    if (error instanceof Error) {
+      throw error;
+    }
+
+    // cronstrue throws a string
+    if (typeof error === 'string') {
+      // remove the "Error: " prefix
+      const string = error.replace(/^Error: /, '');
+      const errorMessage = string.charAt(0).toUpperCase() + string.slice(1);
+      throw new Error(errorMessage);
+    }
+
+    throw new Error('Invalid cron expression');
+  }
+
+  return response;
 };

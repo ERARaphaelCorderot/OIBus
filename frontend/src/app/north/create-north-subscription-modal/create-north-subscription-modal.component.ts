@@ -5,16 +5,14 @@ import { ObservableState, SaveButtonComponent } from '../../shared/save-button/s
 import { TranslateModule } from '@ngx-translate/core';
 import { formDirectives } from '../../shared/form-directives';
 import { SouthConnectorDTO } from '../../../../../shared/model/south-connector.model';
-import { NorthConnectorService } from '../../services/north-connector.service';
 import { NgForOf, NgIf } from '@angular/common';
 import { ExternalSourceDTO } from '../../../../../shared/model/external-sources.model';
-import { tap } from 'rxjs';
-import { NotificationService } from '../../shared/notification.service';
+import { OIBusSubscription } from '../../../../../shared/model/subscription.model';
 
 @Component({
   selector: 'oib-create-north-subscription-modal',
   templateUrl: './create-north-subscription-modal.component.html',
-  styleUrls: ['./create-north-subscription-modal.component.scss'],
+  styleUrl: './create-north-subscription-modal.component.scss',
   imports: [...formDirectives, TranslateModule, SaveButtonComponent, NgForOf, NgIf],
   standalone: true
 })
@@ -22,7 +20,6 @@ export class CreateNorthSubscriptionModalComponent {
   state = new ObservableState();
   southConnectors: Array<SouthConnectorDTO> = [];
   externalSources: Array<ExternalSourceDTO> = [];
-  northId = '';
   form = this.fb.group({
     type: ['south' as 'south' | 'external-source', Validators.required],
     southConnector: [null as SouthConnectorDTO | null, Validators.required],
@@ -31,9 +28,7 @@ export class CreateNorthSubscriptionModalComponent {
 
   constructor(
     private modal: NgbActiveModal,
-    private fb: FormBuilder,
-    private notificationService: NotificationService,
-    private northConnectorService: NorthConnectorService
+    private fb: FormBuilder
   ) {
     this.form.controls.externalSource.disable();
     this.form.controls.type.valueChanges.subscribe(value => {
@@ -50,8 +45,7 @@ export class CreateNorthSubscriptionModalComponent {
   /**
    * Prepares the component for creation.
    */
-  prepareForCreation(northId: string, connectors: Array<SouthConnectorDTO>, externalSources: Array<ExternalSourceDTO>) {
-    this.northId = northId;
+  prepareForCreation(connectors: Array<SouthConnectorDTO>, externalSources: Array<ExternalSourceDTO>) {
     this.southConnectors = connectors;
     this.externalSources = externalSources;
     if (this.southConnectors.length === 0) {
@@ -74,32 +68,11 @@ export class CreateNorthSubscriptionModalComponent {
     }
 
     const formValue = this.form.value;
-    if (formValue.type === 'south') {
-      this.northConnectorService
-        .createNorthConnectorSubscription(this.northId, formValue.southConnector!.id)
-        .pipe(
-          tap(southConnector =>
-            this.notificationService.success(`north.subscriptions.south.created`, {
-              name: formValue.southConnector!.name
-            })
-          )
-        )
-        .subscribe(() => {
-          this.modal.close();
-        });
-    } else {
-      this.northConnectorService
-        .createNorthConnectorExternalSubscription(this.northId, formValue.externalSource!.id)
-        .pipe(
-          tap(southConnector =>
-            this.notificationService.success(`north.subscriptions.external-source.created`, {
-              name: formValue.externalSource!.reference
-            })
-          )
-        )
-        .subscribe(() => {
-          this.modal.close();
-        });
-    }
+    const command: OIBusSubscription = {
+      type: formValue.type!,
+      subscription: formValue.southConnector!,
+      externalSubscription: formValue.externalSource!
+    };
+    this.modal.close(command);
   }
 }

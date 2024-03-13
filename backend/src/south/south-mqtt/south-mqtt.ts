@@ -1,4 +1,4 @@
-import * as mqtt from 'mqtt';
+import mqtt from 'mqtt';
 import { QoS } from 'mqtt-packet';
 
 import objectPath from 'object-path';
@@ -70,7 +70,6 @@ export default class SouthMQTT extends SouthConnector<SouthMQTTSettings, SouthMQ
   }
 
   override async testConnection(): Promise<void> {
-    this.logger.info(`Testing connection on "${this.connector.settings.url}"`);
     const options = await this.createConnectionOptions();
     await this.testConnectionToBroker(options);
   }

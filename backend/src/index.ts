@@ -15,6 +15,8 @@ import HistoryQueryService from './service/history-query.service';
 import OIBusService from './service/oibus.service';
 import { migrateCrypto, migrateEntities, migrateLogsAndMetrics, migrateSouthCache } from './db/migration-service';
 import HomeMetricsService from './service/home-metrics.service';
+import CommandService from './service/command.service';
+import ProxyServer from './web-server/proxy-server';
 
 const CONFIG_DATABASE = 'oibus.db';
 const CRYPTO_DATABASE = 'crypto.db';
@@ -25,6 +27,8 @@ const LOG_DB_NAME = 'logs.db';
 
 (async () => {
   const { configFile, check } = getCommandLineArguments();
+
+  const binaryFolder = process.cwd();
 
   const baseDir = path.resolve(configFile);
   console.info(`Starting OIBus with base directory ${baseDir}...`);
@@ -69,7 +73,6 @@ const LOG_DB_NAME = 'logs.db';
   if (check) {
     console.info('OIBus started in check mode. Exiting process.');
     process.exit();
-    return;
   }
 
   await createFolder(LOG_FOLDER_NAME);
@@ -89,25 +92,42 @@ const LOG_DB_NAME = 'logs.db';
     repositoryService.southMetricsRepository
   );
 
-  const engine = new OIBusEngine(
-    encryptionService,
-    northService,
-    southService,
-    homeMetricsService,
-    loggerService.createChildLogger('data-stream')
-  );
+  const engine = new OIBusEngine(encryptionService, northService, southService, homeMetricsService, loggerService.logger!);
   const historyQueryEngine = new HistoryQueryEngine(
     encryptionService,
     northService,
     southService,
     historyQueryService,
-    loggerService.createChildLogger('history-engine')
+    loggerService.logger!
   );
 
-  const oibusService = new OIBusService(engine, historyQueryEngine);
+  const commandService = new CommandService(oibusSettings.id, repositoryService, encryptionService, loggerService.logger!, binaryFolder);
+  commandService.start();
+
+  const oibusService = new OIBusService(
+    engine,
+    historyQueryEngine,
+    repositoryService,
+    encryptionService,
+    commandService,
+    loggerService.logger!
+  );
 
   await engine.start();
   await historyQueryEngine.start();
+
+  const proxyServer = new ProxyServer(loggerService.logger!);
+  const ipFilters = [
+    '127.0.0.1',
+    '::1',
+    '::ffff:127.0.0.1',
+    ...repositoryService.ipFilterRepository.getIpFilters().map(filter => filter.address)
+  ];
+  proxyServer.refreshIpFilter(ipFilters);
+
+  if (oibusSettings.proxyEnabled) {
+    await proxyServer.start(oibusSettings.proxyPort);
+  }
 
   const reloadService = new ReloadService(
     loggerService,
@@ -117,7 +137,8 @@ const LOG_DB_NAME = 'logs.db';
     northService,
     southService,
     engine,
-    historyQueryEngine
+    historyQueryEngine,
+    proxyServer
   );
   const server = new WebServer(
     oibusSettings.id,
@@ -135,18 +156,18 @@ const LOG_DB_NAME = 'logs.db';
 
   let stopping = false;
   // Catch Ctrl+C and properly stop the Engine
-  process.on('SIGINT', () => {
+  process.on('SIGINT', async () => {
     if (stopping) return;
     console.info('SIGINT (Ctrl+C) received. Stopping everything.');
     stopping = true;
-    const stopAll = [engine.stop(), historyQueryEngine.stop()];
-    Promise.allSettled(stopAll).then(async () => {
-      await server.stop();
-      loggerService.stop();
-      console.info('OIBus stopped');
-      process.exit();
-      stopping = false;
-    });
+    await oibusService.stopOIBus();
+    await commandService.stop();
+    await proxyServer.stop();
+    await server.stop();
+    loggerService.stop();
+    console.info('OIBus stopped');
+    stopping = false;
+    process.exit();
   });
 
   loggerService.logger!.info(`OIBus fully started: ${JSON.stringify(getOIBusInfo())}`);

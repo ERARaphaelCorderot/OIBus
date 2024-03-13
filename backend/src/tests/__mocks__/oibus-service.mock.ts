@@ -6,5 +6,10 @@ export default jest.fn().mockImplementation(() => ({
   stopOIBus: jest.fn(),
   restartOIBus: jest.fn(),
   addValues: jest.fn(),
-  addFile: jest.fn()
+  addFile: jest.fn(),
+  checkForUpdate: jest.fn(),
+  downloadUpdate: jest.fn(),
+  getRegistrationSettings: jest.fn(),
+  updateRegistrationSettings: jest.fn(),
+  unregister: jest.fn()
 }));

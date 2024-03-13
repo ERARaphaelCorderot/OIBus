@@ -19,6 +19,7 @@ import HistoryQueryEngine from '../engine/history-query-engine';
 import { Instant } from '../../../shared/model/types';
 import { ScanModeCommandDTO } from '../../../shared/model/scan-mode.model';
 import HomeMetricsService from './home-metrics.service';
+import ProxyServer from '../web-server/proxy-server';
 
 export default class ReloadService {
   private webServerChangeLoggerCallback: (logger: pino.Logger) => void = () => {};
@@ -32,7 +33,8 @@ export default class ReloadService {
     private readonly _northService: NorthService,
     private readonly _southService: SouthService,
     private readonly _oibusEngine: OIBusEngine,
-    private readonly _historyEngine: HistoryQueryEngine
+    private readonly _historyEngine: HistoryQueryEngine,
+    private readonly _proxyServer: ProxyServer
   ) {}
 
   get repositoryService(): RepositoryService {
@@ -67,6 +69,10 @@ export default class ReloadService {
     return this._historyEngine;
   }
 
+  get proxyServer(): ProxyServer {
+    return this._proxyServer;
+  }
+
   setWebServerChangeLogger(callback: (logger: pino.Logger) => void): void {
     this.webServerChangeLoggerCallback = callback;
   }
@@ -84,11 +90,18 @@ export default class ReloadService {
       this.loggerService.stop();
       await this.loggerService.start(newSettings.id, newSettings.name, newSettings.logParameters);
       this.webServerChangeLoggerCallback(this.loggerService.createChildLogger('web-server'));
-      this.engineMetricsService.setLogger(this.loggerService.createChildLogger('metrics'));
-      this.oibusEngine.setLogger(this.loggerService.createChildLogger('data-stream'));
+      this.engineMetricsService.setLogger(this.loggerService.createChildLogger('internal'));
+      this.oibusEngine.setLogger(this.loggerService.createChildLogger('internal'));
+      this.proxyServer.setLogger(this.loggerService.createChildLogger('internal'));
     }
     if (!oldSettings || oldSettings.port !== newSettings.port) {
       await this.webServerChangePortCallback(newSettings.port);
+    }
+    if (!oldSettings || oldSettings.proxyEnabled !== newSettings.proxyEnabled || oldSettings.proxyPort !== newSettings.proxyPort) {
+      await this.proxyServer.stop();
+      if (newSettings.proxyEnabled) {
+        await this.proxyServer.start(newSettings.proxyPort);
+      }
     }
   }
 
@@ -101,28 +114,13 @@ export default class ReloadService {
   }
 
   async onUpdateSouth(southId: string, command: SouthConnectorCommandDTO): Promise<void> {
-    const previousSettings = this.repositoryService.southConnectorRepository.getSouthConnector(southId)!;
-
     await this.oibusEngine.stopSouth(southId);
+
+    const previousSettings = this.repositoryService.southConnectorRepository.getSouthConnector(southId)!;
     this.repositoryService.southConnectorRepository.updateSouthConnector(southId, command);
 
-    if (previousSettings.history.maxInstantPerItem != command.history.maxInstantPerItem) {
-      this.repositoryService.southCacheRepository.deleteAllCacheScanModes(southId);
-      const maxInstants = this.repositoryService.southCacheRepository.getLatestMaxInstants(southId);
-
-      if (maxInstants) {
-        const latestInstant = maxInstants.values().next().value as Instant;
-        const southItems = this.repositoryService.southItemRepository.getSouthItems(southId);
-        for (const item of southItems) {
-          this.repositoryService.southCacheRepository.createOrUpdateCacheScanMode({
-            southId,
-            itemId: command.history.maxInstantPerItem ? item.id : 'all', // When max instant per item is disabled, we use 'all' as item_id
-            scanModeId: item.scanModeId,
-            maxInstant: maxInstants.get(item.scanModeId) || latestInstant
-          });
-        }
-      }
-    }
+    // Handle all cases regarding cache changes when max instant per item changes
+    this.onSouthMaxInstantPerItemChange(southId, previousSettings, command);
 
     if (command.enabled) {
       this.repositoryService.southConnectorRepository.startSouthConnector(southId);
@@ -172,21 +170,9 @@ export default class ReloadService {
   ): Promise<void> {
     this.repositoryService.southItemRepository.updateSouthItem(southItem.id, command);
     const newItem = this.repositoryService.southItemRepository.getSouthItem(southItem.id)!;
-    const settings = this.repositoryService.southConnectorRepository.getSouthConnector(southId)!;
-    const oldScanModeId = southItem.scanModeId;
-    const newScanModeId = newItem.scanModeId;
 
-    if (oldScanModeId != newScanModeId) {
-      this.repositoryService.southCacheRepository.updateCacheScanModeId(southId, newItem.id, oldScanModeId, newScanModeId);
-
-      if (!settings.history.maxInstantPerItem) {
-        const southItems = this.repositoryService.southItemRepository.getSouthItems(southId);
-        const isOldScanModeUnused = !southItems.some(item => item.scanModeId === oldScanModeId);
-        if (isOldScanModeUnused) {
-          this.repositoryService.southCacheRepository.deleteCacheScanMode(southId, oldScanModeId, 'all');
-        }
-      }
-    }
+    // Handle all cases regarding cache changes when the scan mode changes
+    this.onSouthItemScanModeChange(southId, southItem, newItem);
 
     this.oibusEngine.updateItemInSouth(southId, southItem, newItem);
   }
@@ -198,7 +184,17 @@ export default class ReloadService {
     restart = true
   ): Promise<void> {
     await this.oibusEngine.stopSouth(southConnector.id);
+
+    const allPreviousSouthItems = this.repositoryService.southItemRepository.getSouthItems(southConnector.id);
     this.repositoryService.southItemRepository.createAndUpdateSouthItems(southConnector.id, itemsToAdd, itemsToUpdate);
+
+    for (const newItem of itemsToUpdate) {
+      const previousItem = allPreviousSouthItems.find(i => i.id === newItem.id);
+      if (previousItem) {
+        this.onSouthItemScanModeChange(southConnector.id, previousItem, newItem);
+      }
+    }
+
     if (restart) {
       await this.oibusEngine.startSouth(southConnector.id, southConnector);
     }
@@ -209,7 +205,7 @@ export default class ReloadService {
     if (!southItem) throw new Error('South item not found');
     this.oibusEngine.deleteItemFromSouth(southItem.connectorId, southItem);
     this.repositoryService.southItemRepository.deleteSouthItem(itemId);
-    this.repositoryService.southCacheRepository.deleteCacheScanModesByItem(itemId);
+    this.safeDeleteSouthCacheEntry(southItem);
   }
 
   async onEnableSouthItem(itemId: string): Promise<void> {
@@ -229,14 +225,11 @@ export default class ReloadService {
   async onDeleteAllSouthItems(southId: string): Promise<void> {
     this.oibusEngine.deleteAllItemsFromSouth(southId);
     this.repositoryService.southItemRepository.deleteAllSouthItems(southId);
+    this.repositoryService.southCacheRepository.deleteAllCacheScanModes(southId);
   }
 
   async onCreateNorth(command: NorthConnectorCommandDTO): Promise<NorthConnectorDTO> {
-    const northSettings = this.repositoryService.northConnectorRepository.createNorthConnector(command);
-    if (command.enabled) {
-      await this.oibusEngine.startNorth(northSettings.id, northSettings);
-    }
-    return northSettings;
+    return this.repositoryService.northConnectorRepository.createNorthConnector(command);
   }
 
   async onUpdateNorthSettings(northId: string, command: NorthConnectorCommandDTO): Promise<void> {
@@ -331,6 +324,13 @@ export default class ReloadService {
     await this.historyEngine.startHistoryQuery(settings!);
   }
 
+  async onRestartHistoryQuery(historyId: string): Promise<void> {
+    await this.historyEngine.stopHistoryQuery(historyId, true);
+    this.repositoryService.historyQueryRepository.setHistoryQueryStatus(historyId, 'RUNNING');
+    const settings = this.repositoryService.historyQueryRepository.getHistoryQuery(historyId);
+    await this.historyEngine.startHistoryQuery(settings!);
+  }
+
   async onPauseHistoryQuery(historyId: string): Promise<void> {
     await this.historyEngine.stopHistoryQuery(historyId);
     this.repositoryService.historyQueryRepository.setHistoryQueryStatus(historyId, 'PAUSED');
@@ -408,6 +408,130 @@ export default class ReloadService {
     const newScanMode = this.repositoryService.scanModeRepository.getScanMode(scanModeId)!;
     if (oldScanMode.cron !== scanModeCommand.cron) {
       await this.oibusEngine.updateScanMode(newScanMode);
+    }
+  }
+
+  /**
+   * Handle the change of a south item's scan mode
+   */
+  private onSouthItemScanModeChange(southId: string, previousItem: SouthConnectorItemDTO, newItem: SouthConnectorItemDTO) {
+    const settings = this.repositoryService.southConnectorRepository.getSouthConnector(southId)!;
+    const oldScanModeId = previousItem.scanModeId;
+    const newScanModeId = newItem.scanModeId;
+
+    if (oldScanModeId === newScanModeId) {
+      return;
+    }
+
+    const southItemId = settings.history.maxInstantPerItem ? previousItem.id : 'all';
+    const previousCacheEntry = this.repositoryService.southCacheRepository.getSouthCacheScanMode(southId, oldScanModeId, southItemId);
+    const newCacheEntry = this.repositoryService.southCacheRepository.getSouthCacheScanMode(southId, newScanModeId, southItemId);
+
+    // If the south hasn't been started yet, the previous cache entry won't exist
+    if (!previousCacheEntry) {
+      return;
+    }
+
+    // Max instant per item is enabled
+    if (settings.history.maxInstantPerItem) {
+      // 1. Remove the previous cache entry
+      this.safeDeleteSouthCacheEntry(previousItem);
+
+      // 2. Create the new cache entry, with the previous max instant
+      this.repositoryService.southCacheRepository.createOrUpdateCacheScanMode({
+        southId,
+        itemId: previousItem.id,
+        scanModeId: newScanModeId,
+        maxInstant: previousCacheEntry.maxInstant
+      });
+    }
+
+    // Max instant per item is disabled
+    if (!settings.history.maxInstantPerItem) {
+      // 1. Remove the previous cache entry, if it's not used anymore
+      this.safeDeleteSouthCacheEntry(previousItem);
+
+      // 2. Create the new cache entry, with the previous max instant, if it's not already created
+      if (!newCacheEntry) {
+        this.repositoryService.southCacheRepository.createOrUpdateCacheScanMode({
+          southId,
+          itemId: 'all',
+          scanModeId: newScanModeId,
+          maxInstant: previousCacheEntry.maxInstant
+        });
+      }
+    }
+  }
+
+  /**
+   * Handle the change of the max instant per item setting of a south connector
+   */
+  private onSouthMaxInstantPerItemChange(
+    southId: string,
+    previousSettings: SouthConnectorCommandDTO,
+    newSettings: SouthConnectorCommandDTO
+  ) {
+    if (previousSettings.history.maxInstantPerItem == newSettings.history.maxInstantPerItem) {
+      return;
+    }
+
+    const maxInstantsByScanMode = this.repositoryService.southCacheRepository.getLatestMaxInstants(southId);
+    // If the south hasn't been started yet, the cache entries won't exist
+    if (!maxInstantsByScanMode) {
+      return;
+    }
+
+    // 1. Remove all previous cache entries
+    this.repositoryService.southCacheRepository.deleteAllCacheScanModes(southId);
+
+    // Max instant per item is being enabled
+    if (newSettings.history.maxInstantPerItem) {
+      const southItems = this.repositoryService.southItemRepository.getSouthItems(southId);
+
+      // 2. Create new cache entries for each item
+      // The max instant of these new entries, will be the max instant of the previously removed ones, based on scan mode
+      for (const item of southItems) {
+        const maxInstant = maxInstantsByScanMode.get(item.scanModeId);
+        if (maxInstant) {
+          this.repositoryService.southCacheRepository.createOrUpdateCacheScanMode({
+            southId,
+            itemId: item.id,
+            scanModeId: item.scanModeId,
+            maxInstant
+          });
+        }
+      }
+    }
+
+    // Max instant per item is being disabled
+    if (!newSettings.history.maxInstantPerItem) {
+      // 2. Create a single cache entry for all scan modes
+      // The max instant of these new entries, will be the *latest* max instant of the previously removed ones
+      for (const [scanModeId, maxInstant] of maxInstantsByScanMode) {
+        this.repositoryService.southCacheRepository.createOrUpdateCacheScanMode({ southId, itemId: 'all', scanModeId, maxInstant });
+      }
+    }
+  }
+
+  /**
+   * Safely delete the cache entries of a south item, when the south item is deleted
+   */
+  private safeDeleteSouthCacheEntry(southItem: SouthConnectorItemDTO) {
+    const southConnector = this.repositoryService.southConnectorRepository.getSouthConnector(southItem.connectorId);
+    if (!southConnector) {
+      return;
+    }
+
+    if (southConnector.history.maxInstantPerItem) {
+      this.repositoryService.southCacheRepository.deleteCacheScanModesByItem(southItem.id);
+    }
+
+    if (!southConnector.history.maxInstantPerItem) {
+      const southItems = this.repositoryService.southItemRepository.getSouthItems(southItem.connectorId);
+      const isOldScanModeUnused = !southItems.some(item => item.scanModeId === southItem.scanModeId);
+      if (isOldScanModeUnused) {
+        this.repositoryService.southCacheRepository.deleteCacheScanMode(southItem.id, southItem.scanModeId, 'all');
+      }
     }
   }
 }

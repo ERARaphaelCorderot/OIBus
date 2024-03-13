@@ -81,7 +81,8 @@ describe('SouthDetailComponent', () => {
     history: {
       maxInstantPerItem: false,
       maxReadInterval: 0,
-      readDelay: 200
+      readDelay: 200,
+      overlap: 0
     },
     settings: {}
   };
@@ -92,7 +93,8 @@ describe('SouthDetailComponent', () => {
     architecture: 'x64',
     hostname: 'hostname',
     binaryDirectory: 'bin-directory',
-    operatingSystem: 'Windows'
+    operatingSystem: 'Windows',
+    platform: 'windows'
   };
 
   beforeEach(() => {

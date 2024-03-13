@@ -1,5 +1,5 @@
-import { KoaContext } from '../koa';
 import { EngineSettingsCommandDTO, EngineSettingsDTO, OIBusInfo } from '../../../../shared/model/engine.model';
+import { KoaContext } from '../koa';
 import AbstractController from './abstract.controller';
 import { getOIBusInfo } from '../../service/utils';
 

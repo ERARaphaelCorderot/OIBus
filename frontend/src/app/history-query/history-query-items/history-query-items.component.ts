@@ -24,6 +24,8 @@ import { HistoryQueryDTO } from '../../../../../shared/model/history-query.model
 import { HistoryQueryService } from '../../services/history-query.service';
 import { EditSouthItemModalComponent } from '../../south/edit-south-item-modal/edit-south-item-modal.component';
 import { ImportSouthItemsModalComponent } from '../../south/import-south-items-modal/import-south-items-modal.component';
+import { PaginationComponent } from '../../shared/pagination/pagination.component';
+import { OibHelpComponent } from '../../shared/oib-help/oib-help.component';
 
 const PAGE_SIZE = 20;
 
@@ -34,6 +36,7 @@ const PAGE_SIZE = 20;
     TranslateModule,
     RouterLink,
     NgIf,
+    PaginationComponent,
     NgForOf,
     FormControlValidationDirective,
     FormsModule,
@@ -42,10 +45,11 @@ const PAGE_SIZE = 20;
     BoxComponent,
     BoxTitleDirective,
     DatetimePipe,
-    DurationPipe
+    DurationPipe,
+    OibHelpComponent
   ],
   templateUrl: './history-query-items.component.html',
-  styleUrls: ['./history-query-items.component.scss']
+  styleUrl: './history-query-items.component.scss'
 })
 export class HistoryQueryItemsComponent implements OnInit {
   @Input() historyQuery: HistoryQueryDTO | null = null;
@@ -56,7 +60,7 @@ export class HistoryQueryItemsComponent implements OnInit {
 
   allItems: Array<SouthConnectorItemDTO> = [];
   itemIdsToDelete: Array<string> = [];
-  private filteredItems: Array<SouthConnectorItemDTO> = [];
+  filteredItems: Array<SouthConnectorItemDTO> = [];
   displayedItems: Page<SouthConnectorItemDTO> = emptyPage();
   displaySettings: Array<OibFormControl> = [];
 
@@ -112,7 +116,7 @@ export class HistoryQueryItemsComponent implements OnInit {
     if (!searchText) {
       return items;
     }
-    return items.filter(item => item.name.toLowerCase().includes(searchText));
+    return items.filter(item => item.name.toLowerCase().includes(searchText.toLowerCase()));
   }
 
   /**

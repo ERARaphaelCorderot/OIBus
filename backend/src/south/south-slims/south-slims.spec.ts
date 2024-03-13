@@ -13,10 +13,10 @@ import RepositoryServiceMock from '../../tests/__mocks__/repository-service.mock
 import path from 'node:path';
 import { SouthSlimsItemSettings, SouthSlimsSettings } from '../../../../shared/model/south-settings.model';
 import { DateTime } from 'luxon';
-import { createProxyAgent } from '../../service/proxy.service';
+import { createProxyAgent } from '../../service/proxy-agent';
 
 jest.mock('../../service/utils');
-jest.mock('../../service/proxy.service');
+jest.mock('../../service/proxy-agent');
 
 // Mock node-fetch
 jest.mock('node-fetch');
@@ -169,7 +169,8 @@ describe('SouthSlims with body', () => {
     history: {
       maxInstantPerItem: true,
       maxReadInterval: 3600,
-      readDelay: 0
+      readDelay: 0,
+      overlap: 0
     },
     settings: {
       url: 'http://localhost',
@@ -208,9 +209,7 @@ describe('SouthSlims with body', () => {
         })
       );
 
-    await south.testConnection();
-    expect(logger.info).toHaveBeenCalledWith(`Testing connection on "${configuration.settings.url}"`);
-    expect(logger.info).toHaveBeenCalledWith('SLIMS server request successful');
+    await expect(south.testConnection()).resolves.not.toThrow();
     await expect(south.testConnection()).rejects.toThrow(`HTTP request failed with status code 401 and message: Unauthorized`);
   });
 
@@ -248,8 +247,8 @@ describe('SouthSlims with body', () => {
     expect(south.queryData).toHaveBeenCalledWith(items[2], '2020-03-01T00:00:00.000Z', nowDateString);
     expect(south.queryData).toHaveBeenCalledWith(items[3], '2020-03-01T00:00:00.000Z', nowDateString);
     expect(logger.info).toHaveBeenCalledWith(`Found 2 results for item ${items[0].name} in 0 ms`);
-    expect(logger.debug).toHaveBeenCalledWith(`No result found for item ${items[1].name}. Request done in 0 ms`);
-    expect(logger.debug).toHaveBeenCalledWith(`No result found for item ${items[2].name}. Request done in 0 ms`);
+    expect(logger.info).toHaveBeenCalledWith(`No result found for item ${items[1].name}. Request done in 0 ms`);
+    expect(logger.info).toHaveBeenCalledWith(`No result found for item ${items[2].name}. Request done in 0 ms`);
   });
 
   it('should properly fetch with Body', async () => {
@@ -264,11 +263,15 @@ describe('SouthSlims with body', () => {
       timeout: 30000,
       port: configuration.settings.port,
       path: items[0].settings.endpoint,
-      headers: { authorization: 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=', 'content-length': '7', 'content-type': 'application/json' }
+      headers: {
+        authorization: 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=',
+        'content-length': '7',
+        'content-type': 'application/json'
+      }
     };
     expect(utils.httpGetWithBody).toHaveBeenCalledWith('my body', expectedOptions);
     expect(logger.info).toHaveBeenCalledWith(
-      `Requesting data with GET method and body on: "${expectedOptions.host}:${expectedOptions.port}${expectedOptions.path}"`
+      `Requesting data with GET method and body "my body" on: "${expectedOptions.host}:${expectedOptions.port}${expectedOptions.path}"`
     );
   });
 
@@ -309,7 +312,8 @@ describe('SouthSlims with body and accept self signed', () => {
     history: {
       maxInstantPerItem: true,
       maxReadInterval: 3600,
-      readDelay: 0
+      readDelay: 0,
+      overlap: 0
     },
     settings: {
       url: 'https://localhost/',
@@ -343,7 +347,6 @@ describe('SouthSlims with body and accept self signed', () => {
       method: 'GET',
       timeout: 30000
     });
-    expect(logger.error).toHaveBeenCalledWith(`Fetch error ${new Error('Timeout error')}`);
   });
 
   it('should properly fetch with Body', async () => {
@@ -359,11 +362,15 @@ describe('SouthSlims with body and accept self signed', () => {
       timeout: 30000,
       port: connector.settings.port,
       path: items[3].settings.endpoint,
-      headers: { authorization: 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=', 'content-length': '7', 'content-type': 'application/json' }
+      headers: {
+        authorization: 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=',
+        'content-length': '7',
+        'content-type': 'application/json'
+      }
     };
     expect(utils.httpGetWithBody).toHaveBeenCalledWith('my body', expectedOptions);
     expect(logger.info).toHaveBeenCalledWith(
-      `Requesting data with GET method and body on: "${expectedOptions.host}:${expectedOptions.port}${expectedOptions.path}"`
+      `Requesting data with GET method and body "my body" on: "${expectedOptions.host}:${expectedOptions.port}${expectedOptions.path}"`
     );
   });
 });
@@ -378,7 +385,8 @@ describe('SouthSlims with query params', () => {
     history: {
       maxInstantPerItem: true,
       maxReadInterval: 3600,
-      readDelay: 0
+      readDelay: 0,
+      overlap: 0
     },
     settings: {
       url: 'http://localhost',
@@ -416,7 +424,11 @@ describe('SouthSlims with query params', () => {
       timeout: 30000,
       port: configuration.settings.port,
       path: items[0].settings.endpoint,
-      headers: { authorization: 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=', 'content-length': '7', 'content-type': 'application/json' }
+      headers: {
+        authorization: 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=',
+        'content-length': '7',
+        'content-type': 'application/json'
+      }
     };
     expect(utils.httpGetWithBody).toHaveBeenCalledWith('my body', expectedOptions);
     expect(createProxyAgent).toHaveBeenCalledWith(
@@ -430,7 +442,7 @@ describe('SouthSlims with query params', () => {
       configuration.settings.acceptUnauthorized
     );
     expect(logger.info).toHaveBeenCalledWith(
-      `Requesting data with GET method and body on: "${expectedOptions.host}:${expectedOptions.port}${expectedOptions.path}"`
+      `Requesting data with GET method and body "my body" on: "${expectedOptions.host}:${expectedOptions.port}${expectedOptions.path}"`
     );
   });
 
@@ -480,7 +492,7 @@ describe('SouthSlims with query params', () => {
     );
 
     await south.start();
-    await expect(south.queryData(items[1], '2019-10-03T13:36:38.590Z', '2019-10-03T15:36:38.590Z')).rejects.toThrowError(
+    await expect(south.queryData(items[1], '2019-10-03T13:36:38.590Z', '2019-10-03T15:36:38.590Z')).rejects.toThrow(
       'HTTP request failed with status code 400 and message: statusText'
     );
 
@@ -629,26 +641,20 @@ describe('SouthSlims with query params', () => {
       {
         pointId: 'myPid-myName',
         timestamp: '2020-01-01T00:00:00.000Z',
-        data: {
-          unit: 'g/L',
-          value: 123
-        }
+        unit: 'g/L',
+        value: 123
       },
       {
         pointId: 'myOtherPid-myOtherName',
         timestamp: '2021-01-01T00:00:00.000Z',
-        data: {
-          unit: 'Ø',
-          value: 0
-        }
+        unit: 'Ø',
+        value: 0
       },
       {
         pointId: 'anotherPid-anotherName',
         timestamp: '2020-06-01T00:00:00.000Z',
-        data: {
-          unit: 'Ø',
-          value: 0
-        }
+        unit: 'Ø',
+        value: 0
       }
     ];
 
@@ -1003,7 +1009,8 @@ describe('SouthSlims with query params and accept self signed', () => {
     history: {
       maxInstantPerItem: true,
       maxReadInterval: 3600,
-      readDelay: 0
+      readDelay: 0,
+      overlap: 0
     },
     settings: {
       url: 'http://localhost',
@@ -1039,7 +1046,11 @@ describe('SouthSlims with query params and accept self signed', () => {
       timeout: 30000,
       port: configuration.settings.port,
       path: items[0].settings.endpoint,
-      headers: { authorization: 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=', 'content-length': '7', 'content-type': 'application/json' }
+      headers: {
+        authorization: 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=',
+        'content-length': '7',
+        'content-type': 'application/json'
+      }
     };
     expect(utils.httpGetWithBody).toHaveBeenCalledWith('my body', expectedOptions);
     expect(createProxyAgent).toHaveBeenCalledWith(
@@ -1053,7 +1064,7 @@ describe('SouthSlims with query params and accept self signed', () => {
       configuration.settings.acceptUnauthorized
     );
     expect(logger.info).toHaveBeenCalledWith(
-      `Requesting data with GET method and body on: "${expectedOptions.host}:${expectedOptions.port}${expectedOptions.path}"`
+      `Requesting data with GET method and body "my body" on: "${expectedOptions.host}:${expectedOptions.port}${expectedOptions.path}"`
     );
   });
 

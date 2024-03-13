@@ -20,7 +20,7 @@ import { Instant } from '../../../../shared/model/types';
 import { DateTime } from 'luxon';
 import { QueriesHistory } from '../south-interface';
 import { SouthSlimsItemSettings, SouthSlimsSettings } from '../../../../shared/model/south-settings.model';
-import { createProxyAgent } from '../../service/proxy.service';
+import { createProxyAgent } from '../../service/proxy-agent';
 import { OIBusDataValue } from '../../../../shared/model/engine.model';
 
 export interface SlimsColumn {
@@ -35,6 +35,13 @@ export interface SlimsEntity {
 
 export interface SlimsResults {
   entities: Array<SlimsEntity>;
+}
+
+interface SlimsDataValue {
+  pointId: string;
+  timestamp: Instant;
+  value: string | number;
+  unit: string;
 }
 
 /**
@@ -71,8 +78,6 @@ export default class SouthSlims extends SouthConnector<SouthSlimsSettings, South
   }
 
   override async testConnection(): Promise<void> {
-    this.logger.info(`Testing connection on "${this.connector.settings.url}"`);
-
     const headers: HeadersInit = {};
     const basic = Buffer.from(
       `${this.connector.settings.username}:${await this.encryptionService.decryptText(this.connector.settings.password!)}`
@@ -100,21 +105,19 @@ export default class SouthSlims extends SouthConnector<SouthSlimsSettings, South
       )
     };
 
+    let response;
     try {
-      const response = await fetch(requestUrl, fetchOptions);
-      switch (response.status) {
-        case 404: // 404 is included because /slimsrest/rest is not found but the authentication occurs before. There is no ping to test the connection
-        case 200:
-        case 201:
-          this.logger.info('SLIMS server request successful');
-          return;
-        default:
-          this.logger.error(`HTTP request failed with status code ${response.status} and message: ${response.statusText}`);
-          throw new Error(`HTTP request failed with status code ${response.status} and message: ${response.statusText}`);
-      }
+      response = await fetch(requestUrl, fetchOptions);
     } catch (error) {
-      this.logger.error(`Fetch error ${error}`);
       throw new Error(`Fetch error ${error}`);
+    }
+    switch (response.status) {
+      case 404: // 404 is included because /slimsrest/rest is not found but the authentication occurs before. There is no ping to test the connection
+      case 200:
+      case 201:
+        return;
+      default:
+        throw new Error(`HTTP request failed with status code ${response.status} and message: ${response.statusText}`);
     }
   }
 
@@ -147,7 +150,7 @@ export default class SouthSlims extends SouthConnector<SouthSlimsSettings, South
           this.logger
         );
       } else {
-        this.logger.debug(`No result found for item ${item.name}. Request done in ${requestDuration} ms`);
+        this.logger.info(`No result found for item ${item.name}. Request done in ${requestDuration} ms`);
       }
     }
     return updatedStartTime;
@@ -202,7 +205,7 @@ export default class SouthSlims extends SouthConnector<SouthSlimsSettings, South
       };
 
       this.logger.info(
-        `Requesting data with GET method and body on: "${requestOptions.host}:${requestOptions.port}${requestOptions.path}"`
+        `Requesting data with GET method and body "${bodyToSend}" on: "${requestOptions.host}:${requestOptions.port}${requestOptions.path}"`
       );
 
       return httpGetWithBody(bodyToSend, requestOptions);
@@ -251,13 +254,13 @@ export default class SouthSlims extends SouthConnector<SouthSlimsSettings, South
     item: SouthConnectorItemDTO<SouthSlimsItemSettings>,
     httpResult: SlimsResults
   ): {
-    formattedResult: Array<OIBusDataValue>;
+    formattedResult: Array<SlimsDataValue>;
     maxInstant: Instant;
   } {
     if (!httpResult?.entities || !Array.isArray(httpResult.entities)) {
       throw new Error('Bad data: expect SLIMS values to be an array.');
     }
-    const formattedData: Array<OIBusDataValue> = [];
+    const formattedData: Array<SlimsDataValue> = [];
     let maxInstant = DateTime.fromMillis(0).toUTC().toISO()!;
     for (const element of httpResult.entities) {
       const rsltCfPid = element.columns.find(column => column.name === 'rslt_cf_pid');
@@ -289,7 +292,6 @@ export default class SouthSlims extends SouthConnector<SouthSlimsSettings, South
         throw new Error('Bad config: expect rslt_cf_samplingDateAndTime to have an associated date time fields (see item)');
       }
       const resultInstant = convertDateTimeToInstant(rsltCfSamplingDateAndTime.value, samplingDatetimeField);
-
       const referenceDatetimeField = item.settings.dateTimeFields!.find(
         dateTimeField => dateTimeField.fieldName === 'rslt_modifiedOn' && dateTimeField.useAsReference
       );
@@ -301,7 +303,8 @@ export default class SouthSlims extends SouthConnector<SouthSlimsSettings, South
       formattedData.push({
         pointId: `${rsltCfPid.value}-${testName.value}`,
         timestamp: formatInstant(resultInstant, { type: 'iso-string' }) as Instant,
-        data: { value: rsltValue.value, unit: rsltValue.unit || 'Ø' }
+        value: rsltValue.value,
+        unit: rsltValue.unit || 'Ø'
       });
       if (referenceInstant > maxInstant) {
         maxInstant = referenceInstant;

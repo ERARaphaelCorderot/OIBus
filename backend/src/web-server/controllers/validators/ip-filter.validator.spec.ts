@@ -1,5 +1,5 @@
 import JoiValidator from './joi.validator';
-import { ipFilterSchema } from '../../../engine/oibus-validation-schema';
+import { ipFilterSchema } from './oibus-validation-schema';
 
 interface DataProvider {
   dto: any;
@@ -58,9 +58,7 @@ describe('Ip filter validator', () => {
     if (dataProvider.isValid) {
       await expect(validator.validate(ipFilterSchema, dataProvider.dto)).resolves.not.toThrow();
     } else {
-      await expect(validator.validate(ipFilterSchema, dataProvider.dto)).rejects.toThrowError(
-        new Error(dataProvider.errorMessage as string)
-      );
+      await expect(validator.validate(ipFilterSchema, dataProvider.dto)).rejects.toThrow(new Error(dataProvider.errorMessage as string));
     }
   });
 });

@@ -9,7 +9,7 @@ import pino from 'pino';
 import EncryptionService from '../service/encryption.service';
 import RepositoryService from '../service/repository.service';
 
-import { delay, generateIntervals } from '../service/utils';
+import { delay, generateIntervals, validateCronExpression } from '../service/utils';
 import { QueriesFile, QueriesHistory, QueriesLastPoint, QueriesSubscription } from './south-interface';
 import { Instant } from '../../../shared/model/types';
 import { ScanModeDTO } from '../../../shared/model/scan-mode.model';
@@ -53,7 +53,8 @@ jest.mock(
         },
         metrics: {
           numberOfValuesRetrieved: 1,
-          numberOfFilesRetrieved: 1
+          numberOfFilesRetrieved: 1,
+          historyMetrics: {}
         }
       };
     }
@@ -160,7 +161,8 @@ describe('SouthConnector enabled', () => {
       history: {
         maxInstantPerItem: false,
         maxReadInterval: 3600,
-        readDelay: 0
+        readDelay: 0,
+        overlap: 30
       },
       settings: {}
     };
@@ -490,6 +492,7 @@ describe('SouthConnector enabled', () => {
     expect(logger.error).toHaveBeenCalledWith(`Error when creating South item in cron jobs: scan mode ${item.scanModeId} not found`);
 
     await south.addItem(item);
+    await south.addItem({ ...item, scanModeId: '' });
 
     expect(south.createCronJob).toHaveBeenCalledTimes(1);
   });
@@ -691,6 +694,25 @@ describe('SouthConnector enabled', () => {
     await south.stop();
   });
 
+  it('should not create a cron job when the cron expression is invalid', () => {
+    const scanMode = {
+      id: 'id1',
+      name: 'scanMode1',
+      description: 'my scan mode',
+      cron: '* * * * * *L'
+    };
+    const error = new Error('Invalid cron expression');
+    (validateCronExpression as jest.Mock).mockImplementationOnce(() => {
+      throw error;
+    });
+
+    south.createCronJob(scanMode);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      `Error when creating South cron job for scan mode "${scanMode.name}" (${scanMode.cron}): ${error.message}`
+    );
+  });
+
   it('should not activate item when adding disabled item', () => {
     (repositoryService.scanModeRepository.getScanMode as jest.Mock).mockReturnValueOnce({
       id: 'id1',
@@ -729,7 +751,8 @@ describe('SouthConnector with max instant per item', () => {
       history: {
         maxInstantPerItem: true,
         maxReadInterval: 3600,
-        readDelay: 0
+        readDelay: 0,
+        overlap: 30
       },
       settings: {}
     };
@@ -752,7 +775,7 @@ describe('SouthConnector with max instant per item', () => {
 
     await south.historyQueryHandler(items, '2020-02-02T02:02:02.222Z', '2023-02-02T02:02:02.222Z', 'scanModeId1');
     expect(generateIntervals).toHaveBeenCalledWith(
-      '2020-02-02T02:02:02.222Z',
+      '2020-02-02T02:02:02.192Z',
       '2023-02-02T02:02:02.222Z',
       configuration.history.maxReadInterval
     );
@@ -787,7 +810,7 @@ describe('SouthConnector with max instant per item', () => {
 
     await south.historyQueryHandler(items, '2020-02-02T02:02:02.222Z', '2023-02-02T02:02:02.222Z', 'scanModeId1');
     expect(generateIntervals).toHaveBeenCalledWith(
-      '2020-02-02T02:02:02.222Z',
+      '2020-02-02T02:02:02.192Z',
       '2023-02-02T02:02:02.222Z',
       configuration.history.maxReadInterval
     );
@@ -819,7 +842,7 @@ describe('SouthConnector with max instant per item', () => {
 
     await south.historyQueryHandler(items, '2020-02-02T02:02:02.222Z', '2023-02-02T02:02:02.222Z', 'scanModeId1');
     expect(generateIntervals).toHaveBeenCalledWith(
-      '2020-02-02T02:02:02.222Z',
+      '2020-02-02T02:02:02.192Z',
       '2023-02-02T02:02:02.222Z',
       configuration.history.maxReadInterval
     );
@@ -841,7 +864,7 @@ describe('SouthConnector with max instant per item', () => {
 
     await south.historyQueryHandler([items[0]], '2020-02-02T02:02:02.222Z', '2023-02-02T02:02:02.222Z', 'scanModeId1');
     expect(generateIntervals).toHaveBeenCalledWith(
-      '2020-02-02T02:02:02.222Z',
+      '2020-02-02T02:02:02.192Z',
       '2023-02-02T02:02:02.222Z',
       configuration.history.maxReadInterval
     );
@@ -913,7 +936,8 @@ describe('SouthConnector disabled', () => {
       history: {
         maxInstantPerItem: true,
         maxReadInterval: 3600,
-        readDelay: 0
+        readDelay: 0,
+        overlap: 30
       },
       settings: {}
     };
