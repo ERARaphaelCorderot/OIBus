@@ -16,6 +16,7 @@ import SouthSQLite from '../south/south-sqlite/south-sqlite';
 import SouthADS from '../south/south-ads/south-ads';
 import SouthModbus from '../south/south-modbus/south-modbus';
 import SouthOIAnalytics from '../south/south-oianalytics/south-oianalytics';
+import SouthOLE from '../south/south-ole/south-ole';
 
 import { SouthConnectorDTO, SouthConnectorItemDTO, SouthConnectorManifest } from '../../../shared/model/south-connector.model';
 import SouthConnector from '../south/south-connector';
@@ -34,6 +35,7 @@ import postgresqlManifest from '../south/south-postgresql/manifest';
 import oracleManifest from '../south/south-oracle/manifest';
 import odbcManifest from '../south/south-odbc/manifest';
 import sqliteManifest from '../south/south-sqlite/manifest';
+import oleManifest from '../south/south-ole/manifest';
 
 const southList: Array<{ class: typeof SouthConnector<any, any>; manifest: SouthConnectorManifest }> = [
   { class: SouthFolderScanner, manifest: folderScannerManifest },
@@ -43,6 +45,7 @@ const southList: Array<{ class: typeof SouthConnector<any, any>; manifest: South
   { class: SouthMSSQL, manifest: mssqlManifest },
   { class: SouthMySQL, manifest: mysqlManifest },
   { class: SouthODBC, manifest: odbcManifest },
+  { class: SouthOLE, manifest: oleManifest},
   { class: SouthOracle, manifest: oracleManifest },
   { class: SouthPostgreSQL, manifest: postgresqlManifest },
   { class: SouthSQLite, manifest: sqliteManifest },

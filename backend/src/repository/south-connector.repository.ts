@@ -42,6 +42,7 @@ export default class SouthConnectorRepository {
           'mssql',
           'mysql',
           'odbc',
+          'ole',
           'oianalytics',
           'opcua',
           'oracle',

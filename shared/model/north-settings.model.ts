@@ -148,6 +148,7 @@ export interface NorthOIBusSettings extends BaseNorthSettings {
 export interface NorthRestAPISettings extends BaseNorthSettings {
   host: string;
   acceptUnauthorized: boolean;
+  timeout: number;
   valuesEndpoint: string;
   fileEndpoint: string;
   useProxy: boolean;
