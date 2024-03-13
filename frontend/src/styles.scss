@@ -611,5 +611,10 @@ val-errors > div {
   //background-color: $lightGrey;
   border: solid $lightGrey;
     padding-bottom: 0.5em;
+  .box {
+    margin-top: -1rem;
+    margin-right: -1px;
+    margin-left: -1px;
+  }
 }
 
